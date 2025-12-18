@@ -5,11 +5,17 @@ import {
     Car, Upload, Trash2, Layers, RotateCcw, ZoomIn, ZoomOut,
     Type, Download, ChevronUp, Sparkles, Settings2, Maximize2,
     Undo2, Redo2, FlipHorizontal, FlipVertical, Crop, Eye,
-    Palette, Grid3X3, Lock, Unlock, Move, Copy, Scissors
+    Palette, Grid3X3, Lock, Unlock, Move, Copy, Scissors,
+    SunMedium, Droplets, Contrast, Square, Circle, Triangle, 
+    Pentagon, Hexagon, Star, Pencil, Eraser, MousePointer,
+    Magnet, FolderOpen, Layout,
+    Sliders, ArrowUpRight
 } from 'lucide-react'
 import { processTemplateMask } from './utils/maskProcessor'
 import { generateTextPattern } from './utils/textGenerator'
 import { PRESET_PATTERNS, getCategories, getPatternsByCategory } from './utils/patternGenerator'
+import { applyColorAdjustments, resetColorAdjustments } from './utils/colorAdjustment'
+import { getTemplatesByCarModel } from './utils/templateManager'
 
 // 车型配置
 const CAR_MODELS = {
@@ -78,7 +84,39 @@ export default function App() {
     const [viewScale, setViewScale] = useState(100)
 
     // 当前激活的面板
-    const [activePanel, setActivePanel] = useState('layers') // layers, text, patterns
+    const [activePanel, setActivePanel] = useState('layers') // layers, text, patterns, shapes, brush, templates, colors
+
+    // 颜色调整状态
+    const [colorHue, setColorHue] = useState(0)
+    const [colorSaturation, setColorSaturation] = useState(0)
+    const [colorBrightness, setColorBrightness] = useState(0)
+    const [colorContrast, setColorContrast] = useState(0)
+
+    // 智能对齐
+    const [snapEnabled, setSnapEnabled] = useState(true)
+    const [showGuides, setShowGuides] = useState(true)
+    const guideLinesRef = useRef([])
+
+    // 形状工具状态
+    const [shapeType, setShapeType] = useState('rect') // rect, circle, triangle, pentagon, hexagon, star, line
+    const [shapeFillColor, setShapeFillColor] = useState('#e31937')
+    const [shapeStrokeColor, setShapeStrokeColor] = useState('#ffffff')
+    const [shapeStrokeWidth, setShapeStrokeWidth] = useState(2)
+
+    // 画笔工具状态
+    const [isDrawingMode, setIsDrawingMode] = useState(false)
+    const [brushColor, setBrushColor] = useState('#e31937')
+    const [brushWidth, setBrushWidth] = useState(5)
+
+    // 透视变形状态
+    const [isPerspectiveMode, setIsPerspectiveMode] = useState(false)
+    const perspectivePointsRef = useRef([])
+
+    // 设计模板（同步获取）
+    const carTemplates = getTemplatesByCarModel(selectedModel)
+
+    // 当前绘图工具 
+    const [currentTool, setCurrentTool] = useState('select') // select, shape, brush, perspective
 
     // 保存画布状态到历史记录
     const saveToHistory = useCallback(() => {
@@ -428,28 +466,28 @@ export default function App() {
     // 添加图片到画布
     const addImageToCanvas = (dataUrl) => {
         fabric.Image.fromURL(dataUrl, (img) => {
-            const canvas = fabricRef.current
+                const canvas = fabricRef.current
 
-            const maxSize = Math.min(canvas.width, canvas.height) * 0.6
-            const scaleFactor = Math.min(maxSize / img.width, maxSize / img.height, 1)
+                const maxSize = Math.min(canvas.width, canvas.height) * 0.6
+                const scaleFactor = Math.min(maxSize / img.width, maxSize / img.height, 1)
 
-            img.set({
-                left: canvas.width / 2,
-                top: canvas.height / 2,
-                originX: 'center',
-                originY: 'center',
-                scaleX: scaleFactor,
-                scaleY: scaleFactor,
-            })
+                img.set({
+                    left: canvas.width / 2,
+                    top: canvas.height / 2,
+                    originX: 'center',
+                    originY: 'center',
+                    scaleX: scaleFactor,
+                    scaleY: scaleFactor,
+                })
 
-            canvas.add(img)
+                canvas.add(img)
 
-            if (overlayRef.current) {
-                canvas.bringToFront(overlayRef.current)
-            }
+                if (overlayRef.current) {
+                    canvas.bringToFront(overlayRef.current)
+                }
 
-            canvas.setActiveObject(img)
-            canvas.renderAll()
+                canvas.setActiveObject(img)
+                canvas.renderAll()
         })
     }
 
@@ -657,8 +695,8 @@ export default function App() {
     useEffect(() => {
         if (selectedObject && selectedObject !== overlayRef.current) {
             if (uniformScale) {
-                const s = scale / 100
-                selectedObject.set({ scaleX: s, scaleY: s })
+            const s = scale / 100
+            selectedObject.set({ scaleX: s, scaleY: s })
                 setScaleX(scale)
                 setScaleY(scale)
             } else {
@@ -801,6 +839,491 @@ export default function App() {
     const handleZoomIn = () => setViewScale(prev => Math.min(prev + 10, 200))
     const handleZoomOut = () => setViewScale(prev => Math.max(prev - 10, 20))
     const handleZoomReset = () => setViewScale(100)
+
+    // ============== 颜色调整功能 ==============
+    const handleColorAdjustment = useCallback(() => {
+        if (!selectedObject || selectedObject === overlayRef.current) return
+        if (selectedObject.type !== 'image') return
+
+        applyColorAdjustments(selectedObject, {
+            hue: colorHue,
+            saturation: colorSaturation,
+            brightness: colorBrightness,
+            contrast: colorContrast,
+        })
+        fabricRef.current?.renderAll()
+    }, [selectedObject, colorHue, colorSaturation, colorBrightness, colorContrast])
+
+    // 实时更新颜色调整
+    useEffect(() => {
+        if (selectedObject && selectedObject.type === 'image') {
+            handleColorAdjustment()
+        }
+    }, [colorHue, colorSaturation, colorBrightness, colorContrast])
+
+    // 重置颜色调整
+    const handleResetColors = () => {
+        setColorHue(0)
+        setColorSaturation(0)
+        setColorBrightness(0)
+        setColorContrast(0)
+        if (selectedObject && selectedObject.type === 'image') {
+            resetColorAdjustments(selectedObject)
+            fabricRef.current?.renderAll()
+        }
+    }
+
+    // ============== 智能对齐功能 ==============
+    const clearGuideLines = useCallback(() => {
+        const canvas = fabricRef.current
+        if (!canvas) return
+        guideLinesRef.current.forEach(line => canvas.remove(line))
+        guideLinesRef.current = []
+    }, [])
+
+    const createGuideLine = useCallback((points, isHorizontal) => {
+        const line = new fabric.Line(points, {
+            stroke: '#00ff00',
+            strokeWidth: 1,
+            strokeDashArray: [5, 5],
+            selectable: false,
+            evented: false,
+            excludeFromExport: true,
+        })
+        return line
+    }, [])
+
+    // 对齐辅助函数
+    const alignToCenter = (axis) => {
+        if (!selectedObject || selectedObject === overlayRef.current) return
+        const canvas = fabricRef.current
+        
+        if (axis === 'h') {
+            selectedObject.set('left', canvas.width / 2)
+            selectedObject.setCoords()
+        } else {
+            selectedObject.set('top', canvas.height / 2)
+            selectedObject.setCoords()
+        }
+        canvas.renderAll()
+        saveToHistory()
+    }
+
+    const alignToEdge = (edge) => {
+        if (!selectedObject || selectedObject === overlayRef.current) return
+        const canvas = fabricRef.current
+        const objBounds = selectedObject.getBoundingRect()
+        
+        switch(edge) {
+            case 'left':
+                selectedObject.set('left', selectedObject.left - objBounds.left + 20)
+                break
+            case 'right':
+                selectedObject.set('left', selectedObject.left + (canvas.width - objBounds.left - objBounds.width - 20))
+                break
+            case 'top':
+                selectedObject.set('top', selectedObject.top - objBounds.top + 20)
+                break
+            case 'bottom':
+                selectedObject.set('top', selectedObject.top + (canvas.height - objBounds.top - objBounds.height - 20))
+                break
+        }
+        selectedObject.setCoords()
+        canvas.renderAll()
+        saveToHistory()
+    }
+
+    // ============== 形状工具功能 ==============
+    const addShape = (type) => {
+        const canvas = fabricRef.current
+        if (!canvas) return
+
+        let shape
+        const centerX = canvas.width / 2
+        const centerY = canvas.height / 2
+        const size = 100
+
+        switch(type) {
+            case 'rect':
+                shape = new fabric.Rect({
+                    width: size * 1.5,
+                    height: size,
+                    fill: shapeFillColor,
+                    stroke: shapeStrokeColor,
+                    strokeWidth: shapeStrokeWidth,
+                    left: centerX,
+                    top: centerY,
+                    originX: 'center',
+                    originY: 'center',
+                })
+                break
+            case 'circle':
+                shape = new fabric.Circle({
+                    radius: size / 2,
+                    fill: shapeFillColor,
+                    stroke: shapeStrokeColor,
+                    strokeWidth: shapeStrokeWidth,
+                    left: centerX,
+                    top: centerY,
+                    originX: 'center',
+                    originY: 'center',
+                })
+                break
+            case 'triangle':
+                shape = new fabric.Triangle({
+                    width: size,
+                    height: size,
+                    fill: shapeFillColor,
+                    stroke: shapeStrokeColor,
+                    strokeWidth: shapeStrokeWidth,
+                    left: centerX,
+                    top: centerY,
+                    originX: 'center',
+                    originY: 'center',
+                })
+                break
+            case 'pentagon':
+                shape = new fabric.Polygon(
+                    createPolygonPoints(5, size / 2),
+                    {
+                        fill: shapeFillColor,
+                        stroke: shapeStrokeColor,
+                        strokeWidth: shapeStrokeWidth,
+                        left: centerX,
+                        top: centerY,
+                        originX: 'center',
+                        originY: 'center',
+                    }
+                )
+                break
+            case 'hexagon':
+                shape = new fabric.Polygon(
+                    createPolygonPoints(6, size / 2),
+                    {
+                        fill: shapeFillColor,
+                        stroke: shapeStrokeColor,
+                        strokeWidth: shapeStrokeWidth,
+                        left: centerX,
+                        top: centerY,
+                        originX: 'center',
+                        originY: 'center',
+                    }
+                )
+                break
+            case 'star':
+                shape = new fabric.Polygon(
+                    createStarPoints(5, size / 2, size / 4),
+                    {
+                        fill: shapeFillColor,
+                        stroke: shapeStrokeColor,
+                        strokeWidth: shapeStrokeWidth,
+                        left: centerX,
+                        top: centerY,
+                        originX: 'center',
+                        originY: 'center',
+                    }
+                )
+                break
+            case 'line':
+                shape = new fabric.Line([0, 0, size * 2, 0], {
+                    stroke: shapeStrokeColor,
+                    strokeWidth: shapeStrokeWidth * 2,
+                    left: centerX,
+                    top: centerY,
+                    originX: 'center',
+                    originY: 'center',
+                })
+                break
+            case 'arrow':
+                // 箭头使用路径
+                const arrowPath = `M 0 0 L ${size} 0 L ${size - 15} -15 M ${size} 0 L ${size - 15} 15`
+                shape = new fabric.Path(arrowPath, {
+                    stroke: shapeStrokeColor,
+                    strokeWidth: shapeStrokeWidth * 2,
+                    fill: '',
+                    left: centerX,
+                    top: centerY,
+                    originX: 'center',
+                    originY: 'center',
+                })
+                break
+        }
+
+        if (shape) {
+            canvas.add(shape)
+            if (overlayRef.current) {
+                canvas.bringToFront(overlayRef.current)
+            }
+            canvas.setActiveObject(shape)
+            canvas.renderAll()
+        }
+    }
+
+    // 创建正多边形的点
+    function createPolygonPoints(sides, radius) {
+        const points = []
+        const angle = (2 * Math.PI) / sides
+        for (let i = 0; i < sides; i++) {
+            points.push({
+                x: radius * Math.cos(angle * i - Math.PI / 2),
+                y: radius * Math.sin(angle * i - Math.PI / 2),
+            })
+        }
+        return points
+    }
+
+    // 创建星形的点
+    function createStarPoints(points, outerRadius, innerRadius) {
+        const result = []
+        const angle = Math.PI / points
+        for (let i = 0; i < points * 2; i++) {
+            const radius = i % 2 === 0 ? outerRadius : innerRadius
+            result.push({
+                x: radius * Math.cos(angle * i - Math.PI / 2),
+                y: radius * Math.sin(angle * i - Math.PI / 2),
+            })
+        }
+        return result
+    }
+
+    // ============== 画笔工具功能 ==============
+    const toggleDrawingMode = (enabled) => {
+        const canvas = fabricRef.current
+        if (!canvas) return
+
+        setIsDrawingMode(enabled)
+        canvas.isDrawingMode = enabled
+        
+        if (enabled) {
+            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas)
+            canvas.freeDrawingBrush.color = brushColor
+            canvas.freeDrawingBrush.width = brushWidth
+            setCurrentTool('brush')
+        } else {
+            setCurrentTool('select')
+        }
+    }
+
+    // 更新画笔属性
+    useEffect(() => {
+        const canvas = fabricRef.current
+        if (canvas && canvas.freeDrawingBrush) {
+            canvas.freeDrawingBrush.color = brushColor
+            canvas.freeDrawingBrush.width = brushWidth
+        }
+    }, [brushColor, brushWidth])
+
+    // 监听绘图完成，将路径移到遮罩层下方
+    useEffect(() => {
+        const canvas = fabricRef.current
+        if (!canvas) return
+
+        const handlePathCreated = (e) => {
+            if (overlayRef.current) {
+                canvas.bringToFront(overlayRef.current)
+            }
+        }
+
+        canvas.on('path:created', handlePathCreated)
+        return () => canvas.off('path:created', handlePathCreated)
+    }, [])
+
+    // ============== 透视变形功能 ==============
+    const enterPerspectiveMode = () => {
+        if (!selectedObject || selectedObject === overlayRef.current) return
+        if (selectedObject.type !== 'image') {
+            alert('只能对图片进行透视变形')
+            return
+        }
+
+        setIsPerspectiveMode(true)
+        setCurrentTool('perspective')
+
+        const canvas = fabricRef.current
+        const obj = selectedObject
+        
+        // 获取图片的四个角
+        const bounds = obj.getBoundingRect()
+        const corners = [
+            { x: bounds.left, y: bounds.top },
+            { x: bounds.left + bounds.width, y: bounds.top },
+            { x: bounds.left + bounds.width, y: bounds.top + bounds.height },
+            { x: bounds.left, y: bounds.top + bounds.height },
+        ]
+
+        // 创建四个控制点
+        const controlPoints = corners.map((corner, index) => {
+            const point = new fabric.Circle({
+                radius: 8,
+                fill: '#e31937',
+                stroke: '#fff',
+                strokeWidth: 2,
+                left: corner.x,
+                top: corner.y,
+                originX: 'center',
+                originY: 'center',
+                hasBorders: false,
+                hasControls: false,
+                data: { type: 'perspectivePoint', index },
+            })
+            return point
+        })
+
+        perspectivePointsRef.current = controlPoints
+        controlPoints.forEach(p => canvas.add(p))
+        canvas.bringToFront(overlayRef.current)
+        canvas.renderAll()
+    }
+
+    const applyPerspective = async () => {
+        if (!selectedObject || perspectivePointsRef.current.length !== 4) return
+
+        const canvas = fabricRef.current
+        const obj = selectedObject
+        const points = perspectivePointsRef.current.map(p => ({ x: p.left, y: p.top }))
+
+        // 使用 Canvas 2D 进行透视变换（简化版本）
+        // 完整的透视变换需要使用矩阵变换库如 perspective.js
+        const tempCanvas = document.createElement('canvas')
+        const bounds = obj.getBoundingRect()
+        tempCanvas.width = bounds.width
+        tempCanvas.height = bounds.height
+        const tempCtx = tempCanvas.getContext('2d')
+
+        // 绘制原图到临时画布
+        const originalElement = obj.getElement()
+        tempCtx.drawImage(originalElement, 0, 0, bounds.width, bounds.height)
+
+        // 创建变形后的图片（简化：使用 skewX/skewY 近似）
+        const dx1 = points[1].x - points[0].x - bounds.width
+        const dy1 = points[3].y - points[0].y - bounds.height
+        
+        fabric.Image.fromURL(tempCanvas.toDataURL(), (newImg) => {
+            newImg.set({
+                left: points[0].x + bounds.width / 2,
+                top: points[0].y + bounds.height / 2,
+                originX: 'center',
+                originY: 'center',
+                scaleX: obj.scaleX * (1 + dx1 / bounds.width * 0.5),
+                scaleY: obj.scaleY * (1 + dy1 / bounds.height * 0.5),
+                skewX: (points[1].y - points[0].y) * 0.5,
+                skewY: (points[3].x - points[0].x) * 0.5,
+            })
+
+            // 移除旧图片和控制点
+            canvas.remove(obj)
+            perspectivePointsRef.current.forEach(p => canvas.remove(p))
+            perspectivePointsRef.current = []
+
+            // 添加新图片
+            canvas.add(newImg)
+            if (overlayRef.current) {
+                canvas.bringToFront(overlayRef.current)
+            }
+            canvas.setActiveObject(newImg)
+            canvas.renderAll()
+
+            setIsPerspectiveMode(false)
+            setCurrentTool('select')
+            setSelectedObject(newImg)
+            saveToHistory()
+        })
+    }
+
+    const cancelPerspective = () => {
+        const canvas = fabricRef.current
+        perspectivePointsRef.current.forEach(p => canvas.remove(p))
+        perspectivePointsRef.current = []
+        canvas.renderAll()
+        setIsPerspectiveMode(false)
+        setCurrentTool('select')
+    }
+
+    // ============== 添加模板图片到画布 ==============
+    const handleAddTemplateImage = (template) => {
+        if (!template.image) return
+        
+        const canvas = fabricRef.current
+        if (!canvas) return
+
+        fabric.Image.fromURL(template.image, (img) => {
+            // 缩放图片以适应画布
+            const maxSize = Math.min(canvas.width, canvas.height) * 0.6
+            const scale = Math.min(maxSize / img.width, maxSize / img.height)
+            
+            img.set({
+                left: canvas.width / 2,
+                top: canvas.height / 2,
+                originX: 'center',
+                originY: 'center',
+                scaleX: scale,
+                scaleY: scale,
+                selectable: true,
+                evented: true,
+            })
+
+            canvas.add(img)
+            
+            // 确保在遮罩层下方
+            if (overlayRef.current) {
+                canvas.bringToFront(overlayRef.current)
+            }
+            
+            canvas.setActiveObject(img)
+            canvas.renderAll()
+            updateLayerCount()
+            saveToHistory()
+        }, { crossOrigin: 'anonymous' })
+    }
+
+    // ============== 应用模板图片替换底图 ==============
+    const handleApplyTemplate = (template) => {
+        if (!template.image) return
+        
+        const canvas = fabricRef.current
+        if (!canvas) return
+
+        // 移除旧的遮罩层
+        if (overlayRef.current) {
+            canvas.remove(overlayRef.current)
+            overlayRef.current = null
+        }
+
+        // 移除文字填充层
+        if (textFillLayer) {
+            canvas.remove(textFillLayer)
+            setTextFillLayer(null)
+        }
+
+        fabric.Image.fromURL(template.image, (img) => {
+            // 调整画布大小以适应模板图片
+            canvas.setDimensions({ 
+                width: img.width, 
+                height: img.height 
+            })
+            
+            img.set({
+                left: 0,
+                top: 0,
+                selectable: false,
+                evented: false,
+                hoverCursor: 'default',
+            })
+
+            overlayRef.current = img
+            canvas.add(img)
+            canvas.bringToFront(img)
+            canvas.renderAll()
+            
+            // 重置遮罩数据（模板图片不使用遮罩）
+            maskDataRef.current = null
+            
+            // 重置历史记录
+            historyRef.current = []
+            historyIndexRef.current = -1
+            saveToHistory()
+        }, { crossOrigin: 'anonymous' })
+    }
 
     return (
         <div className="flex h-screen bg-canvas overflow-hidden">
@@ -995,115 +1518,168 @@ export default function App() {
                     </select>
                 </div>
 
-                {/* 面板切换标签 */}
+                {/* 面板切换标签 - 第一行 */}
                 <div className="flex border-b border-border">
                     <button
                         onClick={() => setActivePanel('layers')}
-                        className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                        className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
                             activePanel === 'layers' 
-                                ? 'text-accent border-b-2 border-accent' 
+                                ? 'text-accent border-b-2 border-accent bg-accent/10' 
                                 : 'text-gray-400 hover:text-white'
                         }`}
                     >
-                        <Layers size={14} className="inline mr-1" /> 图层
+                        <Layers size={12} className="inline mr-1" /> 图层
                     </button>
                     <button
                         onClick={() => setActivePanel('patterns')}
-                        className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                        className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
                             activePanel === 'patterns' 
-                                ? 'text-accent border-b-2 border-accent' 
+                                ? 'text-accent border-b-2 border-accent bg-accent/10' 
                                 : 'text-gray-400 hover:text-white'
                         }`}
                     >
-                        <Palette size={14} className="inline mr-1" /> 预设图案
+                        <Palette size={12} className="inline mr-1" /> 图案
+                    </button>
+                    <button
+                        onClick={() => setActivePanel('shapes')}
+                        className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
+                            activePanel === 'shapes' 
+                                ? 'text-accent border-b-2 border-accent bg-accent/10' 
+                                : 'text-gray-400 hover:text-white'
+                        }`}
+                    >
+                        <Square size={12} className="inline mr-1" /> 形状
+                    </button>
+                    <button
+                        onClick={() => setActivePanel('brush')}
+                        className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
+                            activePanel === 'brush' 
+                                ? 'text-accent border-b-2 border-accent bg-accent/10' 
+                                : 'text-gray-400 hover:text-white'
+                        }`}
+                    >
+                        <Pencil size={12} className="inline mr-1" /> 画笔
+                    </button>
+                </div>
+                {/* 面板切换标签 - 第二行 */}
+                <div className="flex border-b border-border">
+                    <button
+                        onClick={() => setActivePanel('colors')}
+                        className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
+                            activePanel === 'colors' 
+                                ? 'text-accent border-b-2 border-accent bg-accent/10' 
+                                : 'text-gray-400 hover:text-white'
+                        }`}
+                    >
+                        <Sliders size={12} className="inline mr-1" /> 调色
+                    </button>
+                    <button
+                        onClick={() => setActivePanel('align')}
+                        className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
+                            activePanel === 'align' 
+                                ? 'text-accent border-b-2 border-accent bg-accent/10' 
+                                : 'text-gray-400 hover:text-white'
+                        }`}
+                    >
+                        <Magnet size={12} className="inline mr-1" /> 对齐
                     </button>
                     <button
                         onClick={() => setActivePanel('text')}
-                        className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                        className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
                             activePanel === 'text' 
-                                ? 'text-accent border-b-2 border-accent' 
+                                ? 'text-accent border-b-2 border-accent bg-accent/10' 
                                 : 'text-gray-400 hover:text-white'
                         }`}
                     >
-                        <Type size={14} className="inline mr-1" /> 文字
+                        <Type size={12} className="inline mr-1" /> 文字
+                    </button>
+                    <button
+                        onClick={() => setActivePanel('templates')}
+                        className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
+                            activePanel === 'templates' 
+                                ? 'text-accent border-b-2 border-accent bg-accent/10' 
+                                : 'text-gray-400 hover:text-white'
+                        }`}
+                    >
+                        <Layout size={12} className="inline mr-1" /> 模板
                     </button>
                 </div>
 
                 {/* 图层管理面板 */}
                 {activePanel === 'layers' && (
                     <>
-                        <div className="p-5 border-b border-border panel-section">
-                            <div className="flex items-center gap-2 text-gray-400 mb-3">
-                                <Layers size={16} />
-                                <span className="text-sm font-medium uppercase tracking-wide">贴图管理</span>
-                                {layerCount > 0 && (
-                                    <span className="ml-auto bg-accent/20 text-accent text-xs px-2 py-0.5 rounded-full">
-                                        {layerCount} 层
-                                    </span>
-                                )}
-                            </div>
+                <div className="p-5 border-b border-border panel-section">
+                    <div className="flex items-center gap-2 text-gray-400 mb-3">
+                        <Layers size={16} />
+                        <span className="text-sm font-medium uppercase tracking-wide">贴图管理</span>
+                        {layerCount > 0 && (
+                            <span className="ml-auto bg-accent/20 text-accent text-xs px-2 py-0.5 rounded-full">
+                {layerCount} 层
+              </span>
+                        )}
+                    </div>
 
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/*"
-                                onChange={handleFileChange}
-                                className="hidden"
-                            />
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="hidden"
+                    />
 
-                            <button
-                                onClick={handleImportTexture}
-                                className="w-full bg-accent hover:bg-accent-hover text-white font-semibold
-                               py-3 px-4 rounded-lg transition-all duration-200 flex items-center
-                               justify-center gap-2 btn-glow"
-                            >
-                                <Upload size={18} />
-                                导入图案 / 改色膜
-                            </button>
+                    <button
+                        onClick={handleImportTexture}
+                        className="w-full bg-accent hover:bg-accent-hover text-white font-semibold
+                       py-3 px-4 rounded-lg transition-all duration-200 flex items-center
+                       justify-center gap-2 btn-glow"
+                    >
+                        <Upload size={18} />
+                        导入图案 / 改色膜
+                    </button>
 
-                            <div className="grid grid-cols-2 gap-2 mt-3">
-                                <button
-                                    onClick={handleDeleteSelected}
-                                    disabled={!selectedObject}
-                                    className="bg-panel-light hover:bg-red-500/20 text-gray-300 hover:text-red-400
-                                 py-2.5 px-3 rounded-lg transition-all duration-200 flex items-center
-                                 justify-center gap-1.5 text-sm disabled:opacity-40 disabled:cursor-not-allowed
-                                 border border-transparent hover:border-red-500/30"
-                                >
-                                    <Trash2 size={15} />
-                                    删除选中
-                                </button>
-                                <button
-                                    onClick={handleBringToTop}
-                                    disabled={!selectedObject}
-                                    className="bg-panel-light hover:bg-blue-500/20 text-gray-300 hover:text-blue-400
-                                 py-2.5 px-3 rounded-lg transition-all duration-200 flex items-center
-                                 justify-center gap-1.5 text-sm disabled:opacity-40 disabled:cursor-not-allowed
-                                 border border-transparent hover:border-blue-500/30"
-                                >
-                                    <ChevronUp size={15} />
-                                    置于顶层
-                                </button>
-                            </div>
+                    <div className="grid grid-cols-2 gap-2 mt-3">
+                        <button
+                            onClick={handleDeleteSelected}
+                            disabled={!selectedObject}
+                            className="bg-panel-light hover:bg-red-500/20 text-gray-300 hover:text-red-400
+                         py-2.5 px-3 rounded-lg transition-all duration-200 flex items-center
+                         justify-center gap-1.5 text-sm disabled:opacity-40 disabled:cursor-not-allowed
+                         border border-transparent hover:border-red-500/30"
+                        >
+                            <Trash2 size={15} />
+                            删除选中
+                        </button>
+                        <button
+                            onClick={handleBringToTop}
+                            disabled={!selectedObject}
+                            className="bg-panel-light hover:bg-blue-500/20 text-gray-300 hover:text-blue-400
+                         py-2.5 px-3 rounded-lg transition-all duration-200 flex items-center
+                         justify-center gap-1.5 text-sm disabled:opacity-40 disabled:cursor-not-allowed
+                         border border-transparent hover:border-blue-500/30"
+                        >
+                            <ChevronUp size={15} />
+                            置于顶层
+                        </button>
+                    </div>
 
-                            <button
-                                onClick={handleClearAll}
-                                className="w-full mt-2 bg-panel-light hover:bg-red-500/10 text-gray-400 hover:text-red-400
-                               py-2 px-3 rounded-lg transition-all duration-200 text-sm
-                               border border-transparent hover:border-red-500/20"
-                            >
-                                清除所有贴图
-                            </button>
-                        </div>
+                    <button
+                        onClick={handleClearAll}
+                        className="w-full mt-2 bg-panel-light hover:bg-red-500/10 text-gray-400 hover:text-red-400
+                       py-2 px-3 rounded-lg transition-all duration-200 text-sm
+                       border border-transparent hover:border-red-500/20"
+                    >
+                        清除所有贴图
+                    </button>
+                </div>
 
-                        {/* 变换参数 */}
-                        <div className="p-5 border-b border-border panel-section">
-                            <div className="flex items-center gap-2 text-gray-400 mb-4">
-                                <Settings2 size={16} />
-                                <span className="text-sm font-medium uppercase tracking-wide">变换参数</span>
-                            </div>
+                {/* 变换参数 */}
+                <div className="p-5 border-b border-border panel-section">
+                    <div className="flex items-center gap-2 text-gray-400 mb-4">
+                        <Settings2 size={16} />
+                        <span className="text-sm font-medium uppercase tracking-wide">变换参数</span>
+                    </div>
 
-                            <div className="space-y-4">
+                    <div className="space-y-4">
                                 {/* 透明度 */}
                                 <div>
                                     <div className="flex justify-between text-sm mb-2">
@@ -1124,23 +1700,23 @@ export default function App() {
                                 </div>
 
                                 {/* 旋转 */}
-                                <div>
-                                    <div className="flex justify-between text-sm mb-2">
-                                        <span className="text-gray-400 flex items-center gap-1.5">
-                                            <RotateCcw size={14} /> 旋转角度
-                                        </span>
-                                        <span className="text-white font-mono">{rotation}°</span>
-                                    </div>
-                                    <input
-                                        type="range"
-                                        min="0"
-                                        max="360"
-                                        value={rotation}
-                                        onChange={(e) => setRotation(Number(e.target.value))}
-                                        disabled={!selectedObject}
-                                        className="disabled:opacity-40"
-                                    />
-                                </div>
+                        <div>
+                            <div className="flex justify-between text-sm mb-2">
+                <span className="text-gray-400 flex items-center gap-1.5">
+                  <RotateCcw size={14} /> 旋转角度
+                </span>
+                                <span className="text-white font-mono">{rotation}°</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="0"
+                                max="360"
+                                value={rotation}
+                                onChange={(e) => setRotation(Number(e.target.value))}
+                                disabled={!selectedObject}
+                                className="disabled:opacity-40"
+                            />
+                        </div>
 
                                 {/* 缩放模式切换 */}
                                 <div className="flex items-center justify-between">
@@ -1159,30 +1735,30 @@ export default function App() {
 
                                 {/* 缩放 */}
                                 {uniformScale ? (
-                                    <div>
-                                        <div className="flex justify-between text-sm mb-2">
-                                            <span className="text-gray-400 flex items-center gap-1.5">
-                                                <ZoomIn size={14} /> 缩放比例
-                                            </span>
-                                            <span className="text-white font-mono">{scale}%</span>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min="10"
-                                            max="300"
-                                            value={scale}
-                                            onChange={(e) => setScale(Number(e.target.value))}
-                                            disabled={!selectedObject}
-                                            className="disabled:opacity-40"
-                                        />
-                                    </div>
+                        <div>
+                            <div className="flex justify-between text-sm mb-2">
+                <span className="text-gray-400 flex items-center gap-1.5">
+                  <ZoomIn size={14} /> 缩放比例
+                </span>
+                                <span className="text-white font-mono">{scale}%</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="10"
+                                max="300"
+                                value={scale}
+                                onChange={(e) => setScale(Number(e.target.value))}
+                                disabled={!selectedObject}
+                                className="disabled:opacity-40"
+                            />
+                        </div>
                                 ) : (
                                     <>
                                         <div>
                                             <div className="flex justify-between text-sm mb-2">
                                                 <span className="text-gray-400">宽度缩放</span>
                                                 <span className="text-white font-mono">{scaleX}%</span>
-                                            </div>
+                    </div>
                                             <input
                                                 type="range"
                                                 min="10"
@@ -1192,7 +1768,7 @@ export default function App() {
                                                 disabled={!selectedObject}
                                                 className="disabled:opacity-40"
                                             />
-                                        </div>
+                </div>
                                         <div>
                                             <div className="flex justify-between text-sm mb-2">
                                                 <span className="text-gray-400">高度缩放</span>
@@ -1270,89 +1846,540 @@ export default function App() {
 
                 {/* 文字填充面板 */}
                 {activePanel === 'text' && (
-                    <div className="p-5 border-b border-border panel-section">
-                        <div className="flex items-center gap-2 text-gray-400 mb-3">
-                            <Type size={16} />
-                            <span className="text-sm font-medium uppercase tracking-wide">文字填充</span>
+                <div className="p-5 border-b border-border panel-section">
+                    <div className="flex items-center gap-2 text-gray-400 mb-3">
+                        <Type size={16} />
+                        <span className="text-sm font-medium uppercase tracking-wide">文字填充</span>
+                    </div>
+
+                    <input
+                        type="text"
+                        value={textContent}
+                        onChange={(e) => setTextContent(e.target.value)}
+                        placeholder="输入文字或表情，如 TESLA 🚗"
+                        className="w-full bg-panel-light border border-border rounded-lg px-4 py-3 text-white
+                       placeholder-gray-500 focus:outline-none focus:border-accent transition-colors mb-3"
+                    />
+
+                    <button
+                        onClick={handleGenerateTextFill}
+                        disabled={!textContent.trim()}
+                        className="w-full bg-gradient-to-r from-accent to-pink-600 hover:from-accent-hover
+                       hover:to-pink-500 text-white font-semibold py-3 px-4 rounded-lg
+                       transition-all duration-200 flex items-center justify-center gap-2
+                       disabled:opacity-40 disabled:cursor-not-allowed btn-glow"
+                    >
+                        <Sparkles size={18} />
+                        生成文字填充
+                    </button>
+
+                    <div className="mt-4 space-y-3">
+                        <div>
+                            <div className="flex justify-between text-xs mb-1.5">
+                                <span className="text-gray-500">字体大小</span>
+                                <span className="text-gray-400 font-mono">{fontSize}px</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="12"
+                                max="120"
+                                value={fontSize}
+                                onChange={(e) => setFontSize(Number(e.target.value))}
+                            />
                         </div>
 
-                        <input
-                            type="text"
-                            value={textContent}
-                            onChange={(e) => setTextContent(e.target.value)}
-                            placeholder="输入文字或表情，如 TESLA 🚗"
-                            className="w-full bg-panel-light border border-border rounded-lg px-4 py-3 text-white
-                           placeholder-gray-500 focus:outline-none focus:border-accent transition-colors mb-3"
-                        />
+                        <div>
+                            <div className="flex justify-between text-xs mb-1.5">
+                                <span className="text-gray-500">横向间距</span>
+                                <span className="text-gray-400 font-mono">{spacingX}px</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="20"
+                                max="300"
+                                value={spacingX}
+                                onChange={(e) => setSpacingX(Number(e.target.value))}
+                            />
+                        </div>
+
+                        <div>
+                            <div className="flex justify-between text-xs mb-1.5">
+                                <span className="text-gray-500">纵向间距</span>
+                                <span className="text-gray-400 font-mono">{spacingY}px</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="20"
+                                max="300"
+                                value={spacingY}
+                                onChange={(e) => setSpacingY(Number(e.target.value))}
+                            />
+                        </div>
+
+                        <div>
+                            <div className="flex justify-between text-xs mb-1.5">
+                                <span className="text-gray-500">旋转角度</span>
+                                <span className="text-gray-400 font-mono">{textRotation}°</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="-90"
+                                max="90"
+                                value={textRotation}
+                                onChange={(e) => setTextRotation(Number(e.target.value))}
+                            />
+                        </div>
+                    </div>
+                </div>
+                )}
+
+                {/* 形状工具面板 */}
+                {activePanel === 'shapes' && (
+                    <div className="p-5 border-b border-border panel-section">
+                        <div className="flex items-center gap-2 text-gray-400 mb-3">
+                            <Square size={16} />
+                            <span className="text-sm font-medium uppercase tracking-wide">形状工具</span>
+                        </div>
+
+                        {/* 形状选择网格 */}
+                        <div className="grid grid-cols-4 gap-2 mb-4">
+                            {[
+                                { type: 'rect', icon: Square, name: '矩形' },
+                                { type: 'circle', icon: Circle, name: '圆形' },
+                                { type: 'triangle', icon: Triangle, name: '三角形' },
+                                { type: 'pentagon', icon: Pentagon, name: '五边形' },
+                                { type: 'hexagon', icon: Hexagon, name: '六边形' },
+                                { type: 'star', icon: Star, name: '星形' },
+                                { type: 'line', icon: ArrowUpRight, name: '线条' },
+                                { type: 'arrow', icon: ArrowUpRight, name: '箭头' },
+                            ].map(shape => (
+                                <button
+                                    key={shape.type}
+                                    onClick={() => addShape(shape.type)}
+                                    className="aspect-square flex flex-col items-center justify-center gap-1
+                                               bg-panel-light hover:bg-accent/20 rounded-lg transition-colors
+                                               border border-transparent hover:border-accent/50"
+                                    title={shape.name}
+                                >
+                                    <shape.icon size={20} className="text-gray-300" />
+                                    <span className="text-[10px] text-gray-500">{shape.name}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* 颜色设置 */}
+                        <div className="space-y-3">
+                            <div>
+                                <label className="text-xs text-gray-500 mb-1.5 block">填充颜色</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="color"
+                                        value={shapeFillColor}
+                                        onChange={(e) => setShapeFillColor(e.target.value)}
+                                        className="w-12 h-10 rounded cursor-pointer border border-border"
+                                    />
+                                    <input
+                                        type="text"
+                                        value={shapeFillColor}
+                                        onChange={(e) => setShapeFillColor(e.target.value)}
+                                        className="flex-1 bg-panel-light border border-border rounded px-3 text-white text-sm"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-500 mb-1.5 block">边框颜色</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="color"
+                                        value={shapeStrokeColor}
+                                        onChange={(e) => setShapeStrokeColor(e.target.value)}
+                                        className="w-12 h-10 rounded cursor-pointer border border-border"
+                                    />
+                                    <input
+                                        type="text"
+                                        value={shapeStrokeColor}
+                                        onChange={(e) => setShapeStrokeColor(e.target.value)}
+                                        className="flex-1 bg-panel-light border border-border rounded px-3 text-white text-sm"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <div className="flex justify-between text-xs mb-1.5">
+                                    <span className="text-gray-500">边框粗细</span>
+                                    <span className="text-gray-400 font-mono">{shapeStrokeWidth}px</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="20"
+                                    value={shapeStrokeWidth}
+                                    onChange={(e) => setShapeStrokeWidth(Number(e.target.value))}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* 画笔工具面板 */}
+                {activePanel === 'brush' && (
+                    <div className="p-5 border-b border-border panel-section">
+                        <div className="flex items-center gap-2 text-gray-400 mb-3">
+                            <Pencil size={16} />
+                            <span className="text-sm font-medium uppercase tracking-wide">画笔工具</span>
+                        </div>
 
                         <button
-                            onClick={handleGenerateTextFill}
-                            disabled={!textContent.trim()}
-                            className="w-full bg-gradient-to-r from-accent to-pink-600 hover:from-accent-hover
-                           hover:to-pink-500 text-white font-semibold py-3 px-4 rounded-lg
-                           transition-all duration-200 flex items-center justify-center gap-2
-                           disabled:opacity-40 disabled:cursor-not-allowed btn-glow"
+                            onClick={() => toggleDrawingMode(!isDrawingMode)}
+                            className={`w-full py-3 px-4 rounded-lg font-semibold transition-all duration-200 
+                                       flex items-center justify-center gap-2 ${
+                                isDrawingMode
+                                    ? 'bg-accent text-white'
+                                    : 'bg-panel-light text-gray-300 hover:bg-accent/20'
+                            }`}
                         >
-                            <Sparkles size={18} />
-                            生成文字填充
+                            {isDrawingMode ? (
+                                <>
+                                    <MousePointer size={18} />
+                                    退出画笔模式
+                                </>
+                            ) : (
+                                <>
+                                    <Pencil size={18} />
+                                    开始绘制
+                                </>
+                            )}
                         </button>
 
                         <div className="mt-4 space-y-3">
                             <div>
-                                <div className="flex justify-between text-xs mb-1.5">
-                                    <span className="text-gray-500">字体大小</span>
-                                    <span className="text-gray-400 font-mono">{fontSize}px</span>
+                                <label className="text-xs text-gray-500 mb-1.5 block">画笔颜色</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="color"
+                                        value={brushColor}
+                                        onChange={(e) => setBrushColor(e.target.value)}
+                                        className="w-12 h-10 rounded cursor-pointer border border-border"
+                                    />
+                                    <input
+                                        type="text"
+                                        value={brushColor}
+                                        onChange={(e) => setBrushColor(e.target.value)}
+                                        className="flex-1 bg-panel-light border border-border rounded px-3 text-white text-sm"
+                                    />
                                 </div>
-                                <input
-                                    type="range"
-                                    min="12"
-                                    max="120"
-                                    value={fontSize}
-                                    onChange={(e) => setFontSize(Number(e.target.value))}
-                                />
+                            </div>
+
+                            {/* 快捷颜色 */}
+                            <div className="flex gap-1">
+                                {['#e31937', '#ff6b00', '#ffd700', '#00ff00', '#00bfff', '#8b5cf6', '#ffffff', '#000000'].map(color => (
+                                    <button
+                                        key={color}
+                                        onClick={() => setBrushColor(color)}
+                                        className={`w-8 h-8 rounded-lg border-2 transition-transform hover:scale-110 ${
+                                            brushColor === color ? 'border-white' : 'border-transparent'
+                                        }`}
+                                        style={{ backgroundColor: color }}
+                                    />
+                                ))}
                             </div>
 
                             <div>
                                 <div className="flex justify-between text-xs mb-1.5">
-                                    <span className="text-gray-500">横向间距</span>
-                                    <span className="text-gray-400 font-mono">{spacingX}px</span>
+                                    <span className="text-gray-500">画笔粗细</span>
+                                    <span className="text-gray-400 font-mono">{brushWidth}px</span>
                                 </div>
                                 <input
                                     type="range"
-                                    min="20"
-                                    max="300"
-                                    value={spacingX}
-                                    onChange={(e) => setSpacingX(Number(e.target.value))}
+                                    min="1"
+                                    max="50"
+                                    value={brushWidth}
+                                    onChange={(e) => setBrushWidth(Number(e.target.value))}
                                 />
                             </div>
 
-                            <div>
-                                <div className="flex justify-between text-xs mb-1.5">
-                                    <span className="text-gray-500">纵向间距</span>
-                                    <span className="text-gray-400 font-mono">{spacingY}px</span>
-                                </div>
-                                <input
-                                    type="range"
-                                    min="20"
-                                    max="300"
-                                    value={spacingY}
-                                    onChange={(e) => setSpacingY(Number(e.target.value))}
+                            {/* 画笔预览 */}
+                            <div className="flex items-center justify-center py-4 bg-panel-light rounded-lg">
+                                <div 
+                                    className="rounded-full"
+                                    style={{
+                                        width: brushWidth,
+                                        height: brushWidth,
+                                        backgroundColor: brushColor,
+                                    }}
                                 />
                             </div>
+                        </div>
+                    </div>
+                )}
 
-                            <div>
-                                <div className="flex justify-between text-xs mb-1.5">
-                                    <span className="text-gray-500">旋转角度</span>
-                                    <span className="text-gray-400 font-mono">{textRotation}°</span>
-                                </div>
-                                <input
-                                    type="range"
-                                    min="-90"
-                                    max="90"
-                                    value={textRotation}
-                                    onChange={(e) => setTextRotation(Number(e.target.value))}
-                                />
+                {/* 颜色调整面板 */}
+                {activePanel === 'colors' && (
+                    <div className="p-5 border-b border-border panel-section">
+                        <div className="flex items-center justify-between text-gray-400 mb-3">
+                            <div className="flex items-center gap-2">
+                                <Sliders size={16} />
+                                <span className="text-sm font-medium uppercase tracking-wide">颜色调整</span>
                             </div>
+                            <button
+                                onClick={handleResetColors}
+                                className="text-xs text-gray-500 hover:text-accent transition-colors"
+                            >
+                                重置
+                            </button>
+                        </div>
+
+                        {selectedObject && selectedObject.type === 'image' ? (
+                            <div className="space-y-4">
+                                <div>
+                                    <div className="flex justify-between text-sm mb-2">
+                                        <span className="text-gray-400 flex items-center gap-1.5">
+                                            <SunMedium size={14} /> 色相
+                                        </span>
+                                        <span className="text-white font-mono">{colorHue}°</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="-180"
+                                        max="180"
+                                        value={colorHue}
+                                        onChange={(e) => setColorHue(Number(e.target.value))}
+                                    />
+                                </div>
+
+                                <div>
+                                    <div className="flex justify-between text-sm mb-2">
+                                        <span className="text-gray-400 flex items-center gap-1.5">
+                                            <Droplets size={14} /> 饱和度
+                                        </span>
+                                        <span className="text-white font-mono">{colorSaturation}</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="-100"
+                                        max="100"
+                                        value={colorSaturation}
+                                        onChange={(e) => setColorSaturation(Number(e.target.value))}
+                                    />
+                                </div>
+
+                                <div>
+                                    <div className="flex justify-between text-sm mb-2">
+                                        <span className="text-gray-400 flex items-center gap-1.5">
+                                            <SunMedium size={14} /> 亮度
+                                        </span>
+                                        <span className="text-white font-mono">{colorBrightness}</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="-100"
+                                        max="100"
+                                        value={colorBrightness}
+                                        onChange={(e) => setColorBrightness(Number(e.target.value))}
+                                    />
+                                </div>
+
+                                <div>
+                                    <div className="flex justify-between text-sm mb-2">
+                                        <span className="text-gray-400 flex items-center gap-1.5">
+                                            <Contrast size={14} /> 对比度
+                                        </span>
+                                        <span className="text-white font-mono">{colorContrast}</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="-100"
+                                        max="100"
+                                        value={colorContrast}
+                                        onChange={(e) => setColorContrast(Number(e.target.value))}
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 text-gray-500 text-sm">
+                                请先选择一个图片图层
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* 智能对齐面板 */}
+                {activePanel === 'align' && (
+                    <div className="p-5 border-b border-border panel-section">
+                        <div className="flex items-center gap-2 text-gray-400 mb-3">
+                            <Magnet size={16} />
+                            <span className="text-sm font-medium uppercase tracking-wide">智能对齐</span>
+                        </div>
+
+                        {/* 对齐开关 */}
+                        <div className="flex items-center justify-between mb-4 p-3 bg-panel-light rounded-lg">
+                            <span className="text-sm text-gray-300">启用吸附</span>
+                            <button
+                                onClick={() => setSnapEnabled(!snapEnabled)}
+                                className={`w-12 h-6 rounded-full transition-colors ${
+                                    snapEnabled ? 'bg-accent' : 'bg-gray-600'
+                                }`}
+                            >
+                                <div className={`w-5 h-5 bg-white rounded-full transition-transform ${
+                                    snapEnabled ? 'translate-x-6' : 'translate-x-0.5'
+                                }`} />
+                            </button>
+                        </div>
+
+                        {/* 透视变形 */}
+                        <div className="mb-4">
+                            <label className="text-xs text-gray-500 mb-2 block">透视变形</label>
+                            {!isPerspectiveMode ? (
+                                <button
+                                    onClick={enterPerspectiveMode}
+                                    disabled={!selectedObject || selectedObject?.type !== 'image'}
+                                    className="w-full py-2.5 px-4 bg-panel-light hover:bg-accent/20 text-gray-300
+                                               rounded-lg transition-colors flex items-center justify-center gap-2
+                                               disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                    <ArrowUpRight size={16} />
+                                    进入透视模式
+                                </button>
+                            ) : (
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={applyPerspective}
+                                        className="flex-1 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors"
+                                    >
+                                        应用变形
+                                    </button>
+                                    <button
+                                        onClick={cancelPerspective}
+                                        className="flex-1 py-2 bg-panel-light hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
+                                    >
+                                        取消
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 对齐按钮 */}
+                        <div className="space-y-2">
+                            <label className="text-xs text-gray-500 mb-2 block">快速对齐</label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    onClick={() => alignToCenter('h')}
+                                    disabled={!selectedObject}
+                                    className="py-2.5 px-3 bg-panel-light hover:bg-blue-500/20 text-gray-300
+                                               rounded-lg transition-colors text-sm disabled:opacity-40"
+                                >
+                                    水平居中
+                                </button>
+                                <button
+                                    onClick={() => alignToCenter('v')}
+                                    disabled={!selectedObject}
+                                    className="py-2.5 px-3 bg-panel-light hover:bg-blue-500/20 text-gray-300
+                                               rounded-lg transition-colors text-sm disabled:opacity-40"
+                                >
+                                    垂直居中
+                                </button>
+                                <button
+                                    onClick={() => alignToEdge('left')}
+                                    disabled={!selectedObject}
+                                    className="py-2 px-3 bg-panel-light hover:bg-blue-500/20 text-gray-300
+                                               rounded-lg transition-colors text-xs disabled:opacity-40"
+                                >
+                                    靠左
+                                </button>
+                                <button
+                                    onClick={() => alignToEdge('right')}
+                                    disabled={!selectedObject}
+                                    className="py-2 px-3 bg-panel-light hover:bg-blue-500/20 text-gray-300
+                                               rounded-lg transition-colors text-xs disabled:opacity-40"
+                                >
+                                    靠右
+                                </button>
+                                <button
+                                    onClick={() => alignToEdge('top')}
+                                    disabled={!selectedObject}
+                                    className="py-2 px-3 bg-panel-light hover:bg-blue-500/20 text-gray-300
+                                               rounded-lg transition-colors text-xs disabled:opacity-40"
+                                >
+                                    靠上
+                                </button>
+                                <button
+                                    onClick={() => alignToEdge('bottom')}
+                                    disabled={!selectedObject}
+                                    className="py-2 px-3 bg-panel-light hover:bg-blue-500/20 text-gray-300
+                                               rounded-lg transition-colors text-xs disabled:opacity-40"
+                                >
+                                    靠下
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* 设计模板面板 */}
+                {activePanel === 'templates' && (
+                    <div className="p-5 border-b border-border panel-section">
+                        <div className="flex items-center gap-2 text-gray-400 mb-3">
+                            <Layout size={16} />
+                            <span className="text-sm font-medium uppercase tracking-wide">设计模板</span>
+                        </div>
+
+                        {/* 当前车型提示 */}
+                        <div className="mb-4 p-3 bg-accent/10 border border-accent/30 rounded-lg">
+                            <div className="flex items-center gap-2">
+                                <Car size={16} className="text-accent" />
+                                <span className="text-white text-sm font-medium">{selectedModel}</span>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-1">
+                                点击模板替换当前底图
+                            </p>
+                        </div>
+
+                        {/* 模板列表 */}
+                        {carTemplates.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-1">
+                                {carTemplates.map(template => (
+                                    <button
+                                        key={template.id}
+                                        onClick={() => handleApplyTemplate(template)}
+                                        className="group flex flex-col rounded-lg overflow-hidden 
+                                                   border border-border hover:border-accent transition-colors
+                                                   bg-panel-light"
+                                    >
+                                        <div className="relative w-full" style={{ paddingBottom: '75%' }}>
+                                            {template.image ? (
+                                                <img 
+                                                    src={template.image} 
+                                                    alt={template.name}
+                                                    className="absolute inset-0 w-full h-full object-contain bg-black/50"
+                                                />
+                                            ) : (
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <Layout size={24} className="text-gray-600" />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="p-2 text-center border-t border-border">
+                                            <span className="text-white text-xs font-medium line-clamp-1">
+                                                {template.name}
+                                            </span>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-8">
+                                <FolderOpen size={32} className="mx-auto text-gray-600 mb-2" />
+                                <p className="text-gray-500 text-sm">暂无 {selectedModel} 的预设模板</p>
+                                <p className="text-gray-600 text-xs mt-1 px-2">
+                                    请在 public/templates/ 对应目录下添加模板图片
+                                </p>
+                            </div>
+                        )}
+
+                        {/* 模板说明 */}
+                        <div className="mt-4 p-3 bg-panel-light rounded-lg">
+                            <p className="text-xs text-gray-500">
+                                💡 切换车型后会自动加载对应的预设模板图片
+                            </p>
                         </div>
                     </div>
                 )}
