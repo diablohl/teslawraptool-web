@@ -136,3 +136,194 @@ select {
 .panel-section:hover {
   background: rgba(255, 255, 255, 0.02);
 }
+
+/* 工具栏按钮 */
+.toolbar-btn {
+  @apply p-2 rounded-lg hover:bg-panel-light text-gray-400 hover:text-white 
+         transition-colors disabled:opacity-30 disabled:cursor-not-allowed;
+}
+
+/* 图案缩略图 hover 效果 */
+.pattern-thumb {
+  @apply relative aspect-video rounded-lg overflow-hidden 
+         border border-border hover:border-accent transition-all duration-200;
+}
+
+.pattern-thumb:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(227, 25, 55, 0.3);
+}
+
+/* 裁切模式提示 */
+.crop-mode-active {
+  position: relative;
+}
+
+.crop-mode-active::before {
+  content: '裁切模式';
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(227, 25, 55, 0.9);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 100;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* 标签页切换动画 */
+.tab-content {
+  animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 图层项悬停 */
+.layer-item {
+  @apply flex items-center gap-2 p-2 rounded-lg transition-colors cursor-pointer;
+}
+
+.layer-item:hover {
+  @apply bg-panel-light;
+}
+
+.layer-item.selected {
+  @apply bg-accent/20 border border-accent/30;
+}
+
+/* 快捷键提示样式 */
+.shortcut-hint {
+  @apply text-xs text-gray-500 bg-panel-light px-1.5 py-0.5 rounded;
+}
+
+/* 工具提示 */
+[title] {
+  position: relative;
+}
+
+/* 预设图案网格滚动区域 */
+.pattern-grid {
+  scrollbar-width: thin;
+  scrollbar-color: #555 #252525;
+}
+
+.pattern-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.pattern-grid::-webkit-scrollbar-track {
+  background: #252525;
+  border-radius: 3px;
+}
+
+.pattern-grid::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 3px;
+}
+
+.pattern-grid::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}
+
+/* 分类标签激活状态 */
+.category-tag {
+  @apply px-2 py-1 text-xs rounded-lg transition-colors;
+}
+
+.category-tag.active {
+  @apply bg-accent text-white;
+}
+
+.category-tag:not(.active) {
+  @apply bg-panel-light text-gray-400 hover:text-white hover:bg-gray-600;
+}
+
+/* 透明度滑块特殊样式 */
+input[type="range"].opacity-slider::-webkit-slider-track {
+  background: linear-gradient(to right, transparent, #fff);
+}
+
+/* 锁定/解锁按钮动画 */
+.lock-btn {
+  transition: all 0.2s ease;
+}
+
+.lock-btn:hover {
+  transform: rotate(10deg);
+}
+
+/* 面板标题图标 */
+.panel-icon {
+  @apply w-4 h-4 text-gray-400;
+}
+
+/* 导入按钮脉冲动画 */
+.import-btn {
+  animation: importPulse 3s infinite;
+}
+
+@keyframes importPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(227, 25, 55, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px 5px rgba(227, 25, 55, 0.2);
+  }
+}
+
+/* 历史记录指示器 */
+.history-indicator {
+  @apply flex items-center gap-1 text-xs text-gray-500;
+}
+
+.history-indicator .dot {
+  @apply w-1.5 h-1.5 rounded-full bg-gray-600;
+}
+
+.history-indicator .dot.active {
+  @apply bg-accent;
+}
+
+/* 响应式优化 */
+@media (max-width: 1024px) {
+  .right-panel {
+    width: 280px;
+  }
+}
+
+@media (max-width: 768px) {
+  .right-panel {
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 50;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+  }
+  
+  .right-panel.open {
+    transform: translateX(0);
+  }
+}
