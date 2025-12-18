@@ -10,7 +10,7 @@
  * @param {number} options.fontSize - 字体大小
  * @param {number} options.spacingX - 横向间距
  * @param {number} options.spacingY - 纵向间距
- * @param {number} options.rotation - 旋转角度
+ * @param {number} options.rotation - 每个元素的旋转角度
  * @param {Uint8Array} options.maskData - 内部区域遮罩数据
  * @param {number} options.width - 画布宽度
  * @param {number} options.height - 画布高度
@@ -41,65 +41,50 @@ export async function generateTextPattern(options) {
     // 设置文字样式
     ctx.font = `600 ${fontSize}px "Inter", "PingFang SC", "Microsoft YaHei", sans-serif`
     ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
-    ctx.textBaseline = 'top'
+    ctx.textBaseline = 'middle'
+    ctx.textAlign = 'center'
 
     // 测量文字宽度
     const textWidth = ctx.measureText(text).width
-    const textHeight = fontSize * 1.2
+    const textHeight = fontSize
 
-    // 计算需要多少行列才能覆盖整个画布（考虑旋转后的扩展）
-    const diagonal = Math.sqrt(width * width + height * height)
+    // 每个元素的旋转弧度
     const rotationRad = rotation * Math.PI / 180
 
-    // 计算旋转后的覆盖范围
-    const expandFactor = 1.5 // 扩展系数，确保旋转后仍能覆盖
-    const startX = -diagonal * expandFactor / 2
-    const startY = -diagonal * expandFactor / 2
-    const endX = width + diagonal * expandFactor / 2
-    const endY = height + diagonal * expandFactor / 2
-
-    // 保存状态并移动到中心点进行旋转
-    ctx.save()
-    ctx.translate(width / 2, height / 2)
-    ctx.rotate(rotationRad)
-    ctx.translate(-width / 2, -height / 2)
-
-    // 绘制文字网格
+    // 绘制文字网格（单独旋转每个元素）
     let count = 0
-    for (let y = startY; y < endY; y += spacingY) {
+    for (let y = 0; y < height + spacingY; y += spacingY) {
       // 奇数行偏移（交错排列）
-      const rowIndex = Math.floor((y - startY) / spacingY)
+      const rowIndex = Math.floor(y / spacingY)
       const offsetX = rowIndex % 2 === 0 ? 0 : spacingX / 2
 
-      for (let x = startX + offsetX; x < endX; x += spacingX) {
-        // 检查该位置是否在车身内部（需要考虑旋转）
-        const screenX = Math.round(x)
-        const screenY = Math.round(y)
-        
-        // 简化判断：检查文字中心点是否在遮罩内
-        const centerX = Math.round(x + textWidth / 2)
-        const centerY = Math.round(y + textHeight / 2)
-        
-        // 反向变换到原始坐标系
-        const cosR = Math.cos(-rotationRad)
-        const sinR = Math.sin(-rotationRad)
-        const dx = centerX - width / 2
-        const dy = centerY - height / 2
-        const origX = Math.round(dx * cosR - dy * sinR + width / 2)
-        const origY = Math.round(dx * sinR + dy * cosR + height / 2)
+      for (let x = offsetX; x < width + spacingX; x += spacingX) {
+        // 文字中心点坐标
+        const centerX = x
+        const centerY = y
 
-        // 检查是否在遮罩范围内
-        if (origX >= 0 && origX < width && origY >= 0 && origY < height) {
-          const maskIdx = origY * width + origX
+        // 检查中心点是否在遮罩范围内
+        const checkX = Math.round(centerX)
+        const checkY = Math.round(centerY)
+
+        if (checkX >= 0 && checkX < width && checkY >= 0 && checkY < height) {
+          const maskIdx = checkY * width + checkX
           if (maskData[maskIdx] === 255) {
-            ctx.fillText(text, x, y)
+            // 保存状态
+            ctx.save()
+            // 移动到文字中心点
+            ctx.translate(centerX, centerY)
+            // 旋转单个元素
+            ctx.rotate(rotationRad)
+            // 在原点绘制文字（因为已经translate到中心）
+            ctx.fillText(text, 0, 0)
+            // 恢复状态
+            ctx.restore()
             count++
           }
         }
       }
     }
-
-    ctx.restore()
 
     console.log(`生成了 ${count} 个文字实例`)
 
@@ -141,46 +126,36 @@ export async function generateGradientTextPattern(options) {
 
     ctx.font = `600 ${fontSize}px "Inter", "PingFang SC", sans-serif`
     ctx.fillStyle = gradient
-    ctx.textBaseline = 'top'
+    ctx.textBaseline = 'middle'
+    ctx.textAlign = 'center'
 
     const rotationRad = rotation * Math.PI / 180
 
-    ctx.save()
-    ctx.translate(width / 2, height / 2)
-    ctx.rotate(rotationRad)
-    ctx.translate(-width / 2, -height / 2)
-
-    const diagonal = Math.sqrt(width * width + height * height)
-    const startX = -diagonal
-    const startY = -diagonal
-    const endX = width + diagonal
-    const endY = height + diagonal
-
-    for (let y = startY; y < endY; y += spacingY) {
-      const rowIndex = Math.floor((y - startY) / spacingY)
+    // 绘制文字网格（单独旋转每个元素）
+    for (let y = 0; y < height + spacingY; y += spacingY) {
+      const rowIndex = Math.floor(y / spacingY)
       const offsetX = rowIndex % 2 === 0 ? 0 : spacingX / 2
 
-      for (let x = startX + offsetX; x < endX; x += spacingX) {
-        const centerX = Math.round(x + fontSize / 2)
-        const centerY = Math.round(y + fontSize / 2)
-        
-        const cosR = Math.cos(-rotationRad)
-        const sinR = Math.sin(-rotationRad)
-        const dx = centerX - width / 2
-        const dy = centerY - height / 2
-        const origX = Math.round(dx * cosR - dy * sinR + width / 2)
-        const origY = Math.round(dx * sinR + dy * cosR + height / 2)
+      for (let x = offsetX; x < width + spacingX; x += spacingX) {
+        const centerX = x
+        const centerY = y
 
-        if (origX >= 0 && origX < width && origY >= 0 && origY < height) {
-          const maskIdx = origY * width + origX
+        const checkX = Math.round(centerX)
+        const checkY = Math.round(centerY)
+
+        if (checkX >= 0 && checkX < width && checkY >= 0 && checkY < height) {
+          const maskIdx = checkY * width + checkX
           if (maskData[maskIdx] === 255) {
-            ctx.fillText(text, x, y)
+            ctx.save()
+            ctx.translate(centerX, centerY)
+            ctx.rotate(rotationRad)
+            ctx.fillText(text, 0, 0)
+            ctx.restore()
           }
         }
       }
     }
 
-    ctx.restore()
     resolve(canvas.toDataURL('image/png'))
   })
 }

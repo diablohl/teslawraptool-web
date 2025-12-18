@@ -330,12 +330,13 @@ export default function App() {
         }
     }
 
-    // 实时更新文字填充
+    // 实时更新文字填充（拖动滑杆时即时预览）
     useEffect(() => {
         if (textFillLayer && textContent.trim()) {
+            // 使用较短的防抖时间实现近乎实时的预览
             const debounce = setTimeout(() => {
                 handleGenerateTextFill()
-            }, 300)
+            }, 50)
             return () => clearTimeout(debounce)
         }
     }, [fontSize, spacingX, spacingY, textRotation])
@@ -633,7 +634,7 @@ export default function App() {
                         type="text"
                         value={textContent}
                         onChange={(e) => setTextContent(e.target.value)}
-                        placeholder="输入文字，如 TESLA"
+                        placeholder="输入文字或表情，如 TESLA 🚗"
                         className="w-full bg-panel-light border border-border rounded-lg px-4 py-3 text-white
                        placeholder-gray-500 focus:outline-none focus:border-accent transition-colors mb-3"
                     />
