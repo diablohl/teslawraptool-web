@@ -17,7 +17,7 @@ const CAR_MODELS = {
     "焕新款 Model 3": "model3-2024-base.png",
     "焕新款 Model 3 高性能版": "model3-2024-performance.png",
     "Model 3": "model3.png",
-    "焕新款 Model Y": "modely-2025-base.png",
+    "焕新款 Model Y": "modely2025.png",
     "焕新款 Model Y 高性能版": "modely-2025-performance.png",
     "焕新款 Model Y 长续航版": "modely-2025-premium.png",
     "Model Y L": "modely-l.png",
