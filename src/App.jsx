@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { fabric } from 'fabric'
 import { saveAs } from 'file-saver'
 import {
-    Car, Upload, Trash2, Layers, RotateCcw, ZoomIn,
-    Type, Download, ChevronUp, Sparkles, Settings2
+    Car, Upload, Trash2, Layers, RotateCcw, ZoomIn, ZoomOut,
+    Type, Download, ChevronUp, Sparkles, Settings2, Maximize2
 } from 'lucide-react'
 import { processTemplateMask } from './utils/maskProcessor'
 import { generateTextPattern } from './utils/textGenerator'
@@ -45,6 +45,9 @@ export default function App() {
     const [spacingY, setSpacingY] = useState(80)
     const [textRotation, setTextRotation] = useState(-15)
     const [textFillLayer, setTextFillLayer] = useState(null)
+
+    // 预览缩放（仅用于查看，不影响导出）
+    const [viewScale, setViewScale] = useState(100)
 
     // 初始化 Fabric Canvas
     useEffect(() => {
@@ -338,36 +341,144 @@ export default function App() {
     }, [fontSize, spacingX, spacingY, textRotation])
 
     // 导出图片
-    const handleExport = () => {
+    const handleExport = async () => {
         const canvas = fabricRef.current
+        const maskData = maskDataRef.current
         if (!canvas) return
 
         // 取消选择以隐藏控制点
         canvas.discardActiveObject()
+        
+        // 临时移除背景色
+        const originalBg = canvas.backgroundColor
+        canvas.backgroundColor = null
         canvas.renderAll()
 
-        // 导出高质量图片
+        // 导出画布
         const dataUrl = canvas.toDataURL({
             format: 'png',
             quality: 1,
-            multiplier: 2, // 2倍超采样
+            multiplier: 1,
         })
 
-        // 转换并下载
-        fetch(dataUrl)
-            .then(res => res.blob())
-            .then(blob => {
+        // 恢复背景色
+        canvas.backgroundColor = originalBg
+        canvas.renderAll()
+
+        // 如果有遮罩数据，处理外部区域使其透明
+        if (maskData) {
+            const img = new Image()
+            img.src = dataUrl
+            await new Promise(resolve => { img.onload = resolve })
+
+            const width = canvas.width
+            const height = canvas.height
+
+            // 创建临时画布处理图片
+            const tempCanvas = document.createElement('canvas')
+            tempCanvas.width = width
+            tempCanvas.height = height
+            const tempCtx = tempCanvas.getContext('2d')
+            tempCtx.drawImage(img, 0, 0)
+
+            // 获取像素数据
+            const imageData = tempCtx.getImageData(0, 0, width, height)
+            const pixels = imageData.data
+
+            // 将外部区域（maskData === 0）的像素变为透明
+            for (let i = 0; i < width * height; i++) {
+                if (maskData[i] === 0) {
+                    pixels[i * 4 + 3] = 0  // 设置 alpha 为 0（透明）
+                }
+            }
+
+            tempCtx.putImageData(imageData, 0, 0)
+
+            // 导出处理后的图片
+            tempCanvas.toBlob(blob => {
                 saveAs(blob, `tesla-wrap-design-${Date.now()}.png`)
-            })
+            }, 'image/png')
+        } else {
+            // 无遮罩数据时直接导出
+            fetch(dataUrl)
+                .then(res => res.blob())
+                .then(blob => {
+                    saveAs(blob, `tesla-wrap-design-${Date.now()}.png`)
+                })
+        }
     }
+
+    // 预览缩放控制
+    const handleZoomIn = () => setViewScale(prev => Math.min(prev + 10, 200))
+    const handleZoomOut = () => setViewScale(prev => Math.max(prev - 10, 20))
+    const handleZoomReset = () => setViewScale(100)
 
     return (
         <div className="flex h-screen bg-canvas overflow-hidden">
             {/* 左侧画布区域 */}
-            <div className="flex-1 flex items-center justify-center p-6 canvas-container">
-                <div className="relative shadow-2xl rounded-lg overflow-hidden"
-                     style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)' }}>
-                    <canvas ref={canvasRef} />
+            <div className="flex-1 flex flex-col overflow-hidden">
+                {/* 可滚动的画布容器 */}
+                <div className="flex-1 overflow-auto p-6 canvas-container">
+                    <div className="inline-block min-w-full min-h-full flex items-center justify-center">
+                        <div 
+                            className="relative shadow-2xl rounded-lg overflow-hidden"
+                            style={{ 
+                                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)',
+                                transform: `scale(${viewScale / 100})`,
+                                transformOrigin: 'center center',
+                            }}
+                        >
+                            <canvas ref={canvasRef} />
+                        </div>
+                    </div>
+                </div>
+                
+                {/* 底部缩放控制栏 */}
+                <div className="flex items-center justify-center gap-3 py-3 px-4 bg-panel border-t border-border">
+                    <button
+                        onClick={handleZoomOut}
+                        className="p-2 rounded-lg bg-panel-light hover:bg-gray-700 text-gray-400 
+                                   hover:text-white transition-colors"
+                        title="缩小预览"
+                    >
+                        <ZoomOut size={18} />
+                    </button>
+                    
+                    <div className="flex items-center gap-2 min-w-[120px] justify-center">
+                        <input
+                            type="range"
+                            min="20"
+                            max="200"
+                            value={viewScale}
+                            onChange={(e) => setViewScale(Number(e.target.value))}
+                            className="w-24"
+                        />
+                        <span className="text-gray-400 text-sm font-mono w-12 text-right">
+                            {viewScale}%
+                        </span>
+                    </div>
+                    
+                    <button
+                        onClick={handleZoomIn}
+                        className="p-2 rounded-lg bg-panel-light hover:bg-gray-700 text-gray-400 
+                                   hover:text-white transition-colors"
+                        title="放大预览"
+                    >
+                        <ZoomIn size={18} />
+                    </button>
+                    
+                    <button
+                        onClick={handleZoomReset}
+                        className="p-2 rounded-lg bg-panel-light hover:bg-gray-700 text-gray-400 
+                                   hover:text-white transition-colors ml-2"
+                        title="重置为100%"
+                    >
+                        <Maximize2 size={18} />
+                    </button>
+                    
+                    <span className="text-gray-600 text-xs ml-2">
+                        预览缩放（不影响导出尺寸）
+                    </span>
                 </div>
             </div>
 
@@ -611,7 +722,7 @@ export default function App() {
                         导出高清设计图
                     </button>
                     <p className="text-center text-gray-600 text-xs mt-2">
-                        2x 超采样 · PNG 格式
+                        原始分辨率 · PNG 格式
                     </p>
                 </div>
             </div>

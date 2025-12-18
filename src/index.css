@@ -20,6 +20,7 @@ body {
 /* 自定义滚动条 */
 ::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -33,6 +34,31 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+
+/* 画布滚动容器 */
+.canvas-container::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.canvas-container::-webkit-scrollbar-track {
+  background: #252525;
+  border-radius: 5px;
+}
+
+.canvas-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #555 0%, #666 100%);
+  border-radius: 5px;
+  border: 2px solid #252525;
+}
+
+.canvas-container::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #666 0%, #777 100%);
+}
+
+.canvas-container::-webkit-scrollbar-corner {
+  background: #252525;
 }
 
 /* 滑块样式 */

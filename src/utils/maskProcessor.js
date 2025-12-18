@@ -39,20 +39,32 @@ export async function processTemplateMask(imagePath, bgColor = '#1a1a1a') {
         const imageData = ctx.getImageData(0, 0, width, height)
         const pixels = imageData.data
         
-        // 提取亮度信息
+        // 提取亮度和透明度信息
         const brightness = new Float32Array(width * height)
+        const alpha = new Uint8Array(width * height)
         for (let i = 0; i < width * height; i++) {
           const r = pixels[i * 4]
           const g = pixels[i * 4 + 1]
           const b = pixels[i * 4 + 2]
+          const a = pixels[i * 4 + 3]
           brightness[i] = (r + g + b) / 3
+          alpha[i] = a
         }
         
-        // 二值化（区分线条和白色区域）
+        // 二值化（区分线条和白色/透明区域）
+        // 透明像素（alpha < 128）视为外部区域（可填充）
+        // 不透明像素根据亮度区分：亮度高=白色区域，亮度低=线条
         const threshold = 200
+        const alphaThreshold = 128
         const binary = new Uint8Array(width * height)
         for (let i = 0; i < width * height; i++) {
-          binary[i] = brightness[i] > threshold ? 255 : 0
+          if (alpha[i] < alphaThreshold) {
+            // 透明像素 - 属于背景/外部区域
+            binary[i] = 255
+          } else {
+            // 不透明像素 - 根据亮度区分
+            binary[i] = brightness[i] > threshold ? 255 : 0
+          }
         }
         
         // 泛洪填充 - 从四个角落标记外部区域
@@ -72,19 +84,22 @@ export async function processTemplateMask(imagePath, bgColor = '#1a1a1a') {
         const outputData = ctx.createImageData(width, height)
         const output = outputData.data
         
-        // 创建内部区域遮罩数据（用于文字填充）
+        // 创建区域遮罩数据（用于文字填充和导出处理）
+        // 0 = 外部区域（导出时应透明）
+        // 127 = 线条区域（导出时保留）
+        // 255 = 内部区域（导出时保留，文字填充区域）
         const innerMask = new Uint8Array(width * height)
         
         for (let i = 0; i < width * height; i++) {
           const idx = i * 4
           
           if (mask[i] === OUTSIDE) {
-            // 外部区域 - 背景色
+            // 外部区域 - 背景色（编辑时遮盖用）
             output[idx] = bgRgb.r
             output[idx + 1] = bgRgb.g
             output[idx + 2] = bgRgb.b
             output[idx + 3] = 255
-            innerMask[i] = 0
+            innerMask[i] = 0  // 外部区域标记
           } else if (binary[i] === 0) {
             // 线条区域 - 根据原始亮度生成平滑的白线
             const intensity = Math.min(255, Math.max(180, 255 - brightness[i]))
@@ -92,14 +107,14 @@ export async function processTemplateMask(imagePath, bgColor = '#1a1a1a') {
             output[idx + 1] = intensity
             output[idx + 2] = intensity
             output[idx + 3] = 255
-            innerMask[i] = 0
+            innerMask[i] = 127  // 线条区域标记
           } else {
             // 内部区域 - 透明
             output[idx] = 0
             output[idx + 1] = 0
             output[idx + 2] = 0
             output[idx + 3] = 0
-            innerMask[i] = 255
+            innerMask[i] = 255  // 内部区域标记
           }
         }
         
