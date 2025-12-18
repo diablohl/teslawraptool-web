@@ -34,7 +34,8 @@
 
 ```
 root/
-│---assets/           # 车型模板图片
+├── public/
+│   └── assets/       # 车型模板图片
 ├── src/
 │   ├── utils/
 │   │   ├── maskProcessor.js   # 遮罩处理算法
