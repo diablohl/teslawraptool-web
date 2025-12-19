@@ -9,13 +9,14 @@ import {
     SunMedium, Droplets, Contrast, Square, Circle, Triangle, 
     Pentagon, Hexagon, Star, Pencil, Eraser, MousePointer,
     FolderOpen, Layout, PaintBucket, Mail,
-    Sliders, ArrowUpRight
+    Sliders, ArrowUpRight, Languages
 } from 'lucide-react'
 import { processTemplateMask } from './utils/maskProcessor'
 import { generateTextPattern } from './utils/textGenerator'
 import { PRESET_PATTERNS, getCategories, getPatternsByCategory } from './utils/patternGenerator'
 import { applyColorAdjustments, resetColorAdjustments } from './utils/colorAdjustment'
 import { getTemplatesByCarModel } from './utils/templateManager'
+import { useLanguage } from './contexts/LanguageContext'
 
 // 车型配置
 const CAR_MODELS = {
@@ -37,6 +38,9 @@ const CANVAS_BG = '#1a1a1a'
 const MAX_HISTORY = 50
 
 export default function App() {
+    // 语言管理
+    const { t, toggleLanguage, language } = useLanguage()
+    
     const canvasRef = useRef(null)
     const fabricRef = useRef(null)
     const overlayRef = useRef(null)
@@ -594,7 +598,7 @@ export default function App() {
     const enterCropMode = () => {
         if (!selectedObject || selectedObject === overlayRef.current) return
         if (selectedObject.type !== 'image') {
-            alert('只能裁切图片图层')
+            alert(t('layersPanel.cropTip'))
             return
         }
         
@@ -1308,7 +1312,7 @@ export default function App() {
     const enterPerspectiveMode = () => {
         if (!selectedObject || selectedObject === overlayRef.current) return
         if (selectedObject.type !== 'image') {
-            alert('只能对图片进行透视变形')
+            alert(t('layersPanel.cropTip'))
             return
         }
 
@@ -1514,7 +1518,7 @@ export default function App() {
                             disabled={!canUndo}
                             className="p-2 rounded-lg hover:bg-panel-light text-gray-400 hover:text-white 
                                        transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                            title="撤销 (Ctrl+Z)"
+                            title={`${t('toolbar.undo')} (Ctrl+Z)`}
                         >
                             <Undo2 size={18} />
                         </button>
@@ -1523,7 +1527,7 @@ export default function App() {
                             disabled={!canRedo}
                             className="p-2 rounded-lg hover:bg-panel-light text-gray-400 hover:text-white 
                                        transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                            title="重做 (Ctrl+Shift+Z)"
+                            title={`${t('toolbar.redo')} (Ctrl+Shift+Z)`}
                         >
                             <Redo2 size={18} />
                         </button>
@@ -1536,7 +1540,7 @@ export default function App() {
                             disabled={!selectedObject}
                             className="p-2 rounded-lg hover:bg-panel-light text-gray-400 hover:text-white 
                                        transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                            title="水平翻转"
+                            title={t('layersPanel.flipH')}
                         >
                             <FlipHorizontal size={18} />
                         </button>
@@ -1545,7 +1549,7 @@ export default function App() {
                             disabled={!selectedObject}
                             className="p-2 rounded-lg hover:bg-panel-light text-gray-400 hover:text-white 
                                        transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                            title="垂直翻转"
+                            title={t('layersPanel.flipV')}
                         >
                             <FlipVertical size={18} />
                         </button>
@@ -1554,7 +1558,7 @@ export default function App() {
                             disabled={!selectedObject}
                             className="p-2 rounded-lg hover:bg-panel-light text-gray-400 hover:text-white 
                                        transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                            title="复制 (Ctrl+D)"
+                            title={`${t('layersPanel.duplicate')} (Ctrl+D)`}
                         >
                             <Copy size={18} />
                         </button>
@@ -1568,7 +1572,7 @@ export default function App() {
                                 disabled={!selectedObject || selectedObject?.type !== 'image'}
                                 className="p-2 rounded-lg hover:bg-panel-light text-gray-400 hover:text-white 
                                            transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                                title="裁切"
+                                title={t('layersPanel.crop')}
                             >
                                 <Crop size={18} />
                             </button>
@@ -1579,14 +1583,14 @@ export default function App() {
                                     className="px-3 py-1.5 rounded-lg bg-accent hover:bg-accent-hover text-white 
                                                text-sm font-medium transition-colors"
                                 >
-                                    应用裁切
+                                    {t('layersPanel.applyCrop')}
                                 </button>
                                 <button
                                     onClick={exitCropMode}
                                     className="px-3 py-1.5 rounded-lg bg-panel-light hover:bg-gray-600 text-gray-300 
                                                text-sm transition-colors"
                                 >
-                                    取消
+                                    {t('layersPanel.cancelCrop')}
                                 </button>
                             </>
                         )}
@@ -1594,9 +1598,9 @@ export default function App() {
 
                     {/* 快捷键提示 */}
                     <div className="ml-auto text-xs text-gray-500">
-                        <span className="mr-4">Delete 删除</span>
-                        <span className="mr-4">Ctrl+D 复制</span>
-                        <span>方向键 微调位置</span>
+                        <span className="mr-4">Delete {t('shortcuts.delete')}</span>
+                        <span className="mr-4">Ctrl+D {t('shortcuts.duplicate')}</span>
+                        <span>{t('shortcuts.move')}</span>
                     </div>
                 </div>
 
@@ -1622,7 +1626,7 @@ export default function App() {
                         onClick={handleZoomOut}
                         className="p-2 rounded-lg bg-panel-light hover:bg-gray-700 text-gray-400 
                                    hover:text-white transition-colors"
-                        title="缩小预览"
+                        title={t('toolbar.zoomOut')}
                     >
                         <ZoomOut size={18} />
                     </button>
@@ -1645,7 +1649,7 @@ export default function App() {
                         onClick={handleZoomIn}
                         className="p-2 rounded-lg bg-panel-light hover:bg-gray-700 text-gray-400 
                                    hover:text-white transition-colors"
-                        title="放大预览"
+                        title={t('toolbar.zoomIn')}
                     >
                         <ZoomIn size={18} />
                     </button>
@@ -1654,13 +1658,13 @@ export default function App() {
                         onClick={handleZoomReset}
                         className="p-2 rounded-lg bg-panel-light hover:bg-gray-700 text-gray-400 
                                    hover:text-white transition-colors ml-2"
-                        title="重置为100%"
+                        title="100%"
                     >
                         <Maximize2 size={18} />
                     </button>
                     
                     <span className="text-gray-600 text-xs ml-2">
-                        预览缩放（不影响导出尺寸）
+                        {t('toolbar.viewScale')}
                     </span>
                 </div>
             </div>
@@ -1674,8 +1678,17 @@ export default function App() {
                             <h1 className="font-display text-2xl font-bold tracking-wider text-white">
                                 WRAP<span className="text-accent">STUDIO</span>
                             </h1>
-                            <p className="text-gray-500 text-sm mt-1">Tesla 车身设计工具</p>
+                            <p className="text-gray-500 text-sm mt-1">{t('subtitle')}</p>
                         </div>
+                        <button
+                            onClick={toggleLanguage}
+                            className="ml-2 p-2 rounded-lg bg-panel-light hover:bg-accent/20 text-gray-400 
+                                       hover:text-white transition-colors flex items-center gap-1.5"
+                            title={t('toolbar.language')}
+                        >
+                            <Languages size={18} />
+                            <span className="text-xs font-medium">{language === 'zh' ? 'EN' : '中'}</span>
+                        </button>
                     </div>
                     
                     {/* 联系反馈按钮 */}
@@ -1688,7 +1701,7 @@ export default function App() {
                                    text-gray-300 hover:text-white transition-all duration-200 group"
                     >
                         <Mail size={16} className="group-hover:scale-110 transition-transform" />
-                        <span className="text-sm font-medium">反馈意见 / 分享作品</span>
+                        <span className="text-sm font-medium">{language === 'zh' ? '反馈意见 / 分享作品' : 'Feedback / Share'}</span>
                     </a>
                 </div>
 
@@ -1696,7 +1709,7 @@ export default function App() {
                 <div className="p-5 border-b border-border panel-section">
                     <div className="flex items-center gap-2 text-gray-400 mb-3">
                         <Car size={16} />
-                        <span className="text-sm font-medium uppercase tracking-wide">车型选择</span>
+                        <span className="text-sm font-medium uppercase tracking-wide">{t('toolbar.selectModel')}</span>
                     </div>
                     <select
                         value={selectedModel}
@@ -1706,7 +1719,7 @@ export default function App() {
                        appearance-none"
                     >
                         {Object.keys(CAR_MODELS).map(model => (
-                            <option key={model} value={model}>{model}</option>
+                            <option key={model} value={model}>{t(`carModels.${model}`)}</option>
                         ))}
                     </select>
                 </div>
@@ -1721,7 +1734,7 @@ export default function App() {
                                 : 'text-gray-400 hover:text-white'
                         }`}
                     >
-                        <Layers size={12} className="inline mr-1" /> 图层
+                        <Layers size={12} className="inline mr-1" /> {t('panels.layers')}
                     </button>
                     <button
                         onClick={() => setActivePanel('patterns')}
@@ -1731,7 +1744,7 @@ export default function App() {
                                 : 'text-gray-400 hover:text-white'
                         }`}
                     >
-                        <Palette size={12} className="inline mr-1" /> 图案
+                        <Palette size={12} className="inline mr-1" /> {t('panels.patterns')}
                     </button>
                     <button
                         onClick={() => setActivePanel('shapes')}
@@ -1741,7 +1754,7 @@ export default function App() {
                                 : 'text-gray-400 hover:text-white'
                         }`}
                     >
-                        <Square size={12} className="inline mr-1" /> 形状
+                        <Square size={12} className="inline mr-1" /> {t('panels.shapes')}
                     </button>
                     <button
                         onClick={() => setActivePanel('fill')}
@@ -1751,7 +1764,7 @@ export default function App() {
                                 : 'text-gray-400 hover:text-white'
                         }`}
                     >
-                        <PaintBucket size={12} className="inline mr-1" /> 填充
+                        <PaintBucket size={12} className="inline mr-1" /> {language === 'zh' ? '填充' : 'Fill'}
                     </button>
                     <button
                         onClick={() => setActivePanel('brush')}
@@ -1761,7 +1774,7 @@ export default function App() {
                                 : 'text-gray-400 hover:text-white'
                         }`}
                     >
-                        <Pencil size={12} className="inline mr-1" /> 画笔
+                        <Pencil size={12} className="inline mr-1" /> {t('panels.brush')}
                     </button>
                 </div>
                 {/* 面板切换标签 - 第二行 */}
@@ -1774,7 +1787,7 @@ export default function App() {
                                 : 'text-gray-400 hover:text-white'
                         }`}
                     >
-                        <Sliders size={12} className="inline mr-1" /> 调色
+                        <Sliders size={12} className="inline mr-1" /> {t('panels.colors')}
                     </button>
                     <button
                         onClick={() => setActivePanel('text')}
@@ -1784,7 +1797,7 @@ export default function App() {
                                 : 'text-gray-400 hover:text-white'
                         }`}
                     >
-                        <Type size={12} className="inline mr-1" /> 文字
+                        <Type size={12} className="inline mr-1" /> {t('panels.text')}
                     </button>
                     <button
                         onClick={() => setActivePanel('templates')}
@@ -1794,7 +1807,7 @@ export default function App() {
                                 : 'text-gray-400 hover:text-white'
                         }`}
                     >
-                        <Layout size={12} className="inline mr-1" /> 模板
+                        <Layout size={12} className="inline mr-1" /> {t('panels.templates')}
                     </button>
                 </div>
 
@@ -1804,10 +1817,10 @@ export default function App() {
                 <div className="p-5 border-b border-border panel-section">
                     <div className="flex items-center gap-2 text-gray-400 mb-3">
                         <Layers size={16} />
-                        <span className="text-sm font-medium uppercase tracking-wide">贴图管理</span>
+                        <span className="text-sm font-medium uppercase tracking-wide">{t('layersPanel.title')}</span>
                         {layerCount > 0 && (
                             <span className="ml-auto bg-accent/20 text-accent text-xs px-2 py-0.5 rounded-full">
-                {layerCount} 层
+                {layerCount} {language === 'zh' ? '层' : 'layers'}
               </span>
                         )}
                     </div>
@@ -1827,7 +1840,7 @@ export default function App() {
                        justify-center gap-2 btn-glow"
                     >
                         <Upload size={18} />
-                        导入图案 / 改色膜
+                        {t('toolbar.importTexture')}
                     </button>
 
                     <div className="grid grid-cols-2 gap-2 mt-3">
@@ -1840,7 +1853,7 @@ export default function App() {
                          border border-transparent hover:border-red-500/30"
                         >
                             <Trash2 size={15} />
-                            删除选中
+                            {t('layersPanel.delete')}
                         </button>
                         <button
                             onClick={handleBringToTop}
@@ -1851,7 +1864,7 @@ export default function App() {
                          border border-transparent hover:border-blue-500/30"
                         >
                             <ChevronUp size={15} />
-                            置于顶层
+                            {t('layersPanel.bringToTop')}
                         </button>
                     </div>
 
@@ -1861,7 +1874,7 @@ export default function App() {
                        py-2 px-3 rounded-lg transition-all duration-200 text-sm
                        border border-transparent hover:border-red-500/20"
                     >
-                        清除所有贴图
+                        {t('toolbar.clearAll')}
                     </button>
                 </div>
 
@@ -1869,7 +1882,7 @@ export default function App() {
                 <div className="p-5 border-b border-border panel-section">
                     <div className="flex items-center gap-2 text-gray-400 mb-4">
                         <Settings2 size={16} />
-                        <span className="text-sm font-medium uppercase tracking-wide">变换参数</span>
+                        <span className="text-sm font-medium uppercase tracking-wide">{t('layersPanel.properties')}</span>
                     </div>
 
                     <div className="space-y-4">
@@ -1877,7 +1890,7 @@ export default function App() {
                                 <div>
                                     <div className="flex justify-between text-sm mb-2">
                                         <span className="text-gray-400 flex items-center gap-1.5">
-                                            <Eye size={14} /> 透明度
+                                            <Eye size={14} /> {t('layersPanel.opacity')}
                                         </span>
                                         <span className="text-white font-mono">{opacity}%</span>
                                     </div>
@@ -1896,7 +1909,7 @@ export default function App() {
                         <div>
                             <div className="flex justify-between text-sm mb-2">
                 <span className="text-gray-400 flex items-center gap-1.5">
-                  <RotateCcw size={14} /> 旋转角度
+                  <RotateCcw size={14} /> {t('layersPanel.rotation')}
                 </span>
                                 <span className="text-white font-mono">{rotation}°</span>
                             </div>
@@ -1913,7 +1926,7 @@ export default function App() {
 
                                 {/* 缩放模式切换 */}
                                 <div className="flex items-center justify-between">
-                                    <span className="text-gray-400 text-sm">等比缩放</span>
+                                    <span className="text-gray-400 text-sm">{t('layersPanel.uniformScale')}</span>
                                     <button
                                         onClick={() => setUniformScale(!uniformScale)}
                                         className={`p-2 rounded-lg transition-colors ${
@@ -1931,7 +1944,7 @@ export default function App() {
                         <div>
                             <div className="flex justify-between text-sm mb-2">
                 <span className="text-gray-400 flex items-center gap-1.5">
-                  <ZoomIn size={14} /> 缩放比例
+                  <ZoomIn size={14} /> {t('layersPanel.scale')}
                 </span>
                                 <span className="text-white font-mono">{scale}%</span>
                             </div>
@@ -1949,7 +1962,7 @@ export default function App() {
                                     <>
                                         <div>
                                             <div className="flex justify-between text-sm mb-2">
-                                                <span className="text-gray-400">宽度缩放</span>
+                                                <span className="text-gray-400">{t('layersPanel.width')}</span>
                                                 <span className="text-white font-mono">{scaleX}%</span>
                     </div>
                                             <input
@@ -1964,7 +1977,7 @@ export default function App() {
                 </div>
                                         <div>
                                             <div className="flex justify-between text-sm mb-2">
-                                                <span className="text-gray-400">高度缩放</span>
+                                                <span className="text-gray-400">{t('layersPanel.height')}</span>
                                                 <span className="text-white font-mono">{scaleY}%</span>
                                             </div>
                                             <input
@@ -1989,12 +2002,12 @@ export default function App() {
                     <div className="p-5 border-b border-border panel-section">
                         <div className="flex items-center gap-2 text-gray-400 mb-3">
                             <Palette size={16} />
-                            <span className="text-sm font-medium uppercase tracking-wide">预设图案</span>
+                            <span className="text-sm font-medium uppercase tracking-wide">{t('patternsPanel.title')}</span>
                         </div>
                         
                         {/* 分类选择 */}
                         <div className="mb-4">
-                            <label className="text-xs text-gray-500 mb-2 block">图案分类</label>
+                            <label className="text-xs text-gray-500 mb-2 block">{t('patternsPanel.category')}</label>
                             <div className="flex flex-wrap gap-2">
                                 {getCategories().map(cat => (
                                     <button
@@ -2032,7 +2045,7 @@ export default function App() {
                                             <div className="w-full h-full flex items-center justify-center text-gray-500">
                                                 <div className="text-center">
                                                     <Palette size={24} className="mx-auto mb-2 opacity-50" />
-                                                    <div className="text-xs">加载中...</div>
+                                                    <div className="text-xs">{t('patternsPanel.loading')}</div>
                                                 </div>
                                             </div>
                                         )}
@@ -2055,14 +2068,14 @@ export default function App() {
                 <div className="p-5 border-b border-border panel-section">
                     <div className="flex items-center gap-2 text-gray-400 mb-3">
                         <Type size={16} />
-                        <span className="text-sm font-medium uppercase tracking-wide">文字填充</span>
+                        <span className="text-sm font-medium uppercase tracking-wide">{t('textPanel.title')}</span>
                     </div>
 
                     <input
                         type="text"
                         value={textContent}
                         onChange={(e) => setTextContent(e.target.value)}
-                        placeholder="输入文字或表情，如 TESLA 🚗"
+                        placeholder={t('textPanel.placeholder')}
                         className="w-full bg-panel-light border border-border rounded-lg px-4 py-3 text-white
                        placeholder-gray-500 focus:outline-none focus:border-accent transition-colors mb-3"
                     />
@@ -2076,13 +2089,13 @@ export default function App() {
                        disabled:opacity-40 disabled:cursor-not-allowed btn-glow"
                     >
                         <Sparkles size={18} />
-                        生成文字填充
+                        {t('textPanel.generate')}
                     </button>
 
                     <div className="mt-4 space-y-3">
                         <div>
                             <div className="flex justify-between text-xs mb-1.5">
-                                <span className="text-gray-500">字体大小</span>
+                                <span className="text-gray-500">{t('textPanel.fontSize')}</span>
                                 <span className="text-gray-400 font-mono">{fontSize}px</span>
                             </div>
                             <input
@@ -2096,7 +2109,7 @@ export default function App() {
 
                         <div>
                             <div className="flex justify-between text-xs mb-1.5">
-                                <span className="text-gray-500">横向间距</span>
+                                <span className="text-gray-500">{t('textPanel.spacingX')}</span>
                                 <span className="text-gray-400 font-mono">{spacingX}px</span>
                             </div>
                             <input
@@ -2110,7 +2123,7 @@ export default function App() {
 
                         <div>
                             <div className="flex justify-between text-xs mb-1.5">
-                                <span className="text-gray-500">纵向间距</span>
+                                <span className="text-gray-500">{t('textPanel.spacingY')}</span>
                                 <span className="text-gray-400 font-mono">{spacingY}px</span>
                             </div>
                             <input
@@ -2124,7 +2137,7 @@ export default function App() {
 
                         <div>
                             <div className="flex justify-between text-xs mb-1.5">
-                                <span className="text-gray-500">旋转角度</span>
+                                <span className="text-gray-500">{t('textPanel.textRotation')}</span>
                                 <span className="text-gray-400 font-mono">{textRotation}°</span>
                             </div>
                             <input
@@ -2144,20 +2157,20 @@ export default function App() {
                     <div className="p-5 border-b border-border panel-section">
                         <div className="flex items-center gap-2 text-gray-400 mb-3">
                             <Square size={16} />
-                            <span className="text-sm font-medium uppercase tracking-wide">形状工具</span>
+                            <span className="text-sm font-medium uppercase tracking-wide">{t('shapesPanel.title')}</span>
                         </div>
 
                         {/* 形状选择网格 */}
                         <div className="grid grid-cols-4 gap-2 mb-4">
                             {[
-                                { type: 'rect', icon: Square, name: '矩形' },
-                                { type: 'circle', icon: Circle, name: '圆形' },
-                                { type: 'triangle', icon: Triangle, name: '三角形' },
-                                { type: 'pentagon', icon: Pentagon, name: '五边形' },
-                                { type: 'hexagon', icon: Hexagon, name: '六边形' },
-                                { type: 'star', icon: Star, name: '星形' },
-                                { type: 'line', icon: ArrowUpRight, name: '线条' },
-                                { type: 'arrow', icon: ArrowUpRight, name: '箭头' },
+                                { type: 'rect', icon: Square, name: t('shapesPanel.rectangle') },
+                                { type: 'circle', icon: Circle, name: t('shapesPanel.circle') },
+                                { type: 'triangle', icon: Triangle, name: t('shapesPanel.triangle') },
+                                { type: 'pentagon', icon: Pentagon, name: t('shapesPanel.pentagon') },
+                                { type: 'hexagon', icon: Hexagon, name: t('shapesPanel.hexagon') },
+                                { type: 'star', icon: Star, name: t('shapesPanel.star') },
+                                { type: 'line', icon: ArrowUpRight, name: t('shapesPanel.line') },
+                                { type: 'arrow', icon: ArrowUpRight, name: t('shapesPanel.arrow') },
                             ].map(shape => (
                                 <button
                                     key={shape.type}
@@ -2193,7 +2206,7 @@ export default function App() {
                                 </div>
                             </div>
                             <div>
-                                <label className="text-xs text-gray-500 mb-1.5 block">边框颜色</label>
+                                <label className="text-xs text-gray-500 mb-1.5 block">{t('shapesPanel.strokeColor')}</label>
                                 <div className="flex gap-2">
                                     <input
                                         type="color"
@@ -2211,7 +2224,7 @@ export default function App() {
                             </div>
                             <div>
                                 <div className="flex justify-between text-xs mb-1.5">
-                                    <span className="text-gray-500">边框粗细</span>
+                                    <span className="text-gray-500">{t('shapesPanel.strokeWidth')}</span>
                                     <span className="text-gray-400 font-mono">{shapeStrokeWidth}px</span>
                                 </div>
                                 <input
@@ -2231,7 +2244,7 @@ export default function App() {
                     <div className="p-5 border-b border-border panel-section">
                         <div className="flex items-center gap-2 text-gray-400 mb-3">
                             <Pencil size={16} />
-                            <span className="text-sm font-medium uppercase tracking-wide">画笔工具</span>
+                            <span className="text-sm font-medium uppercase tracking-wide">{t('brushPanel.title')}</span>
                         </div>
 
                         <button
@@ -2246,19 +2259,19 @@ export default function App() {
                             {isDrawingMode ? (
                                 <>
                                     <MousePointer size={18} />
-                                    退出画笔模式
+                                    {t('brushPanel.disable')}
                                 </>
                             ) : (
                                 <>
                                     <Pencil size={18} />
-                                    开始绘制
+                                    {t('brushPanel.enable')}
                                 </>
                             )}
                         </button>
 
                         <div className="mt-4 space-y-3">
                             <div>
-                                <label className="text-xs text-gray-500 mb-1.5 block">画笔颜色</label>
+                                <label className="text-xs text-gray-500 mb-1.5 block">{t('brushPanel.color')}</label>
                                 <div className="flex gap-2">
                                     <input
                                         type="color"
@@ -2291,7 +2304,7 @@ export default function App() {
 
                             <div>
                                 <div className="flex justify-between text-xs mb-1.5">
-                                    <span className="text-gray-500">画笔粗细</span>
+                                    <span className="text-gray-500">{t('brushPanel.width')}</span>
                                     <span className="text-gray-400 font-mono">{brushWidth}px</span>
                                 </div>
                                 <input
@@ -2323,7 +2336,7 @@ export default function App() {
                     <div className="p-5 border-b border-border panel-section">
                         <div className="flex items-center gap-2 text-gray-400 mb-3">
                             <PaintBucket size={16} />
-                            <span className="text-sm font-medium uppercase tracking-wide">填充工具</span>
+                            <span className="text-sm font-medium uppercase tracking-wide">{t('fillTool.title')}</span>
                         </div>
 
                         <button
@@ -2338,12 +2351,12 @@ export default function App() {
                             {isFillMode ? (
                                 <>
                                     <MousePointer size={18} />
-                                    退出填充模式
+                                    {t('fillTool.disable')}
                                 </>
                             ) : (
                                 <>
                                     <PaintBucket size={18} />
-                                    启用填充工具
+                                    {t('fillTool.enable')}
                                 </>
                             )}
                         </button>
@@ -2353,17 +2366,17 @@ export default function App() {
                             <div className="flex items-start gap-2">
                                 <Eye size={16} className="text-blue-400 mt-0.5 flex-shrink-0" />
                                 <div className="text-xs text-blue-300">
-                                    <p className="font-medium mb-1">使用说明：</p>
-                                    <p>1. 点击"启用填充工具"按钮</p>
-                                    <p>2. 在画布上点击需要填充的区域</p>
-                                    <p>3. 线条围起来的区域会被填充颜色</p>
+                                    <p className="font-medium mb-1">{language === 'zh' ? '使用说明：' : 'Instructions:'}</p>
+                                    <p>{language === 'zh' ? '1. 点击"启用填充工具"按钮' : '1. Click "Enable Fill" button'}</p>
+                                    <p>{language === 'zh' ? '2. 在画布上点击需要填充的区域' : '2. Click on the canvas area to fill'}</p>
+                                    <p>{language === 'zh' ? '3. 线条围起来的区域会被填充颜色' : '3. Enclosed areas will be filled'}</p>
                                 </div>
                             </div>
                         </div>
 
                         <div className="mt-4 space-y-3">
                             <div>
-                                <label className="text-xs text-gray-500 mb-1.5 block">填充颜色</label>
+                                <label className="text-xs text-gray-500 mb-1.5 block">{t('fillTool.color')}</label>
                                 <div className="flex gap-2">
                                     <input
                                         type="color"
@@ -2396,7 +2409,7 @@ export default function App() {
 
                             <div>
                                 <div className="flex justify-between text-xs mb-1.5">
-                                    <span className="text-gray-500">颜色容差</span>
+                                    <span className="text-gray-500">{t('fillTool.tolerance')}</span>
                                     <span className="text-gray-400 font-mono">{fillTolerance}</span>
                                 </div>
                                 <input
@@ -2407,13 +2420,13 @@ export default function App() {
                                     onChange={(e) => setFillTolerance(Number(e.target.value))}
                                 />
                                 <p className="text-xs text-gray-500 mt-1">
-                                    容差越大，填充范围越大
+                                    {language === 'zh' ? '容差越大，填充范围越大' : 'Higher tolerance = larger fill area'}
                                 </p>
                             </div>
 
                             {/* 颜色预览 */}
                             <div>
-                                <label className="text-xs text-gray-500 mb-1.5 block">颜色预览</label>
+                                <label className="text-xs text-gray-500 mb-1.5 block">{language === 'zh' ? '颜色预览' : 'Color Preview'}</label>
                                 <div 
                                     className="w-full h-16 rounded-lg border border-border"
                                     style={{ backgroundColor: fillColor }}
@@ -2429,13 +2442,13 @@ export default function App() {
                         <div className="flex items-center justify-between text-gray-400 mb-3">
                             <div className="flex items-center gap-2">
                                 <Sliders size={16} />
-                                <span className="text-sm font-medium uppercase tracking-wide">颜色调整</span>
+                                <span className="text-sm font-medium uppercase tracking-wide">{t('colorsPanel.title')}</span>
                             </div>
                             <button
                                 onClick={handleResetColors}
                                 className="text-xs text-gray-500 hover:text-accent transition-colors"
                             >
-                                重置
+                                {t('colorsPanel.reset')}
                             </button>
                         </div>
 
@@ -2444,7 +2457,7 @@ export default function App() {
                                 <div>
                                     <div className="flex justify-between text-sm mb-2">
                                         <span className="text-gray-400 flex items-center gap-1.5">
-                                            <SunMedium size={14} /> 色相
+                                            <SunMedium size={14} /> {t('colorsPanel.hue')}
                                         </span>
                                         <span className="text-white font-mono">{colorHue}°</span>
                                     </div>
@@ -2460,7 +2473,7 @@ export default function App() {
                                 <div>
                                     <div className="flex justify-between text-sm mb-2">
                                         <span className="text-gray-400 flex items-center gap-1.5">
-                                            <Droplets size={14} /> 饱和度
+                                            <Droplets size={14} /> {t('colorsPanel.saturation')}
                                         </span>
                                         <span className="text-white font-mono">{colorSaturation}</span>
                                     </div>
@@ -2476,7 +2489,7 @@ export default function App() {
                                 <div>
                                     <div className="flex justify-between text-sm mb-2">
                                         <span className="text-gray-400 flex items-center gap-1.5">
-                                            <SunMedium size={14} /> 亮度
+                                            <SunMedium size={14} /> {t('colorsPanel.brightness')}
                                         </span>
                                         <span className="text-white font-mono">{colorBrightness}</span>
                                     </div>
@@ -2492,7 +2505,7 @@ export default function App() {
                                 <div>
                                     <div className="flex justify-between text-sm mb-2">
                                         <span className="text-gray-400 flex items-center gap-1.5">
-                                            <Contrast size={14} /> 对比度
+                                            <Contrast size={14} /> {t('colorsPanel.contrast')}
                                         </span>
                                         <span className="text-white font-mono">{colorContrast}</span>
                                     </div>
@@ -2507,7 +2520,7 @@ export default function App() {
                             </div>
                         ) : (
                             <div className="text-center py-8 text-gray-500 text-sm">
-                                请先选择一个图片图层
+                                {t('colorsPanel.noSelection')}
                             </div>
                         )}
                     </div>
@@ -2518,17 +2531,17 @@ export default function App() {
                     <div className="p-5 border-b border-border panel-section">
                         <div className="flex items-center gap-2 text-gray-400 mb-3">
                             <Layout size={16} />
-                            <span className="text-sm font-medium uppercase tracking-wide">设计模板</span>
+                            <span className="text-sm font-medium uppercase tracking-wide">{t('templatesPanel.title')}</span>
                         </div>
 
                         {/* 当前车型提示 */}
                         <div className="mb-4 p-3 bg-accent/10 border border-accent/30 rounded-lg">
                             <div className="flex items-center gap-2">
                                 <Car size={16} className="text-accent" />
-                                <span className="text-white text-sm font-medium">{selectedModel}</span>
+                                <span className="text-white text-sm font-medium">{t(`carModels.${selectedModel}`)}</span>
                             </div>
                             <p className="text-xs text-gray-400 mt-1">
-                                点击模板替换当前底图
+                                {t('templatesPanel.clickToApply')}
                             </p>
                         </div>
 
@@ -2567,9 +2580,9 @@ export default function App() {
                         ) : (
                             <div className="text-center py-8">
                                 <FolderOpen size={32} className="mx-auto text-gray-600 mb-2" />
-                                <p className="text-gray-500 text-sm">暂无 {selectedModel} 的预设模板</p>
+                                <p className="text-gray-500 text-sm">{t('templatesPanel.noTemplates')}</p>
                                 <p className="text-gray-600 text-xs mt-1 px-2">
-                                    请在 public/templates/ 对应目录下添加模板图片
+                                    {language === 'zh' ? '请在 public/templates/ 对应目录下添加模板图片' : 'Add template images to public/templates/ directory'}
                                 </p>
                             </div>
                         )}
@@ -2577,7 +2590,7 @@ export default function App() {
                         {/* 模板说明 */}
                         <div className="mt-4 p-3 bg-panel-light rounded-lg">
                             <p className="text-xs text-gray-500">
-                                💡 切换车型后会自动加载对应的预设模板图片
+                                💡 {language === 'zh' ? '切换车型后会自动加载对应的预设模板图片' : 'Templates will load automatically when you switch models'}
                             </p>
                         </div>
                     </div>
@@ -2593,10 +2606,10 @@ export default function App() {
                        shadow-lg hover:shadow-emerald-500/25"
                     >
                         <Download size={20} />
-                        导出高清设计图
+                        {t('toolbar.export')}
                     </button>
                     <p className="text-center text-gray-600 text-xs mt-2">
-                        原始分辨率 · PNG 格式
+                        {language === 'zh' ? '原始分辨率 · PNG 格式' : 'Original Resolution · PNG Format'}
                     </p>
                 </div>
             </div>
