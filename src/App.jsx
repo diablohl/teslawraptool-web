@@ -8,7 +8,7 @@ import {
     Palette, Grid3X3, Lock, Unlock, Move, Copy, Scissors,
     SunMedium, Droplets, Contrast, Square, Circle, Triangle, 
     Pentagon, Hexagon, Star, Pencil, Eraser, MousePointer,
-    Magnet, FolderOpen, Layout,
+    FolderOpen, Layout,
     Sliders, ArrowUpRight
 } from 'lucide-react'
 import { processTemplateMask } from './utils/maskProcessor'
@@ -91,11 +91,6 @@ export default function App() {
     const [colorSaturation, setColorSaturation] = useState(0)
     const [colorBrightness, setColorBrightness] = useState(0)
     const [colorContrast, setColorContrast] = useState(0)
-
-    // 智能对齐
-    const [snapEnabled, setSnapEnabled] = useState(true)
-    const [showGuides, setShowGuides] = useState(true)
-    const guideLinesRef = useRef([])
 
     // 形状工具状态
     const [shapeType, setShapeType] = useState('rect') // rect, circle, triangle, pentagon, hexagon, star, line
@@ -873,66 +868,6 @@ export default function App() {
         }
     }
 
-    // ============== 智能对齐功能 ==============
-    const clearGuideLines = useCallback(() => {
-        const canvas = fabricRef.current
-        if (!canvas) return
-        guideLinesRef.current.forEach(line => canvas.remove(line))
-        guideLinesRef.current = []
-    }, [])
-
-    const createGuideLine = useCallback((points, isHorizontal) => {
-        const line = new fabric.Line(points, {
-            stroke: '#00ff00',
-            strokeWidth: 1,
-            strokeDashArray: [5, 5],
-            selectable: false,
-            evented: false,
-            excludeFromExport: true,
-        })
-        return line
-    }, [])
-
-    // 对齐辅助函数
-    const alignToCenter = (axis) => {
-        if (!selectedObject || selectedObject === overlayRef.current) return
-        const canvas = fabricRef.current
-        
-        if (axis === 'h') {
-            selectedObject.set('left', canvas.width / 2)
-            selectedObject.setCoords()
-        } else {
-            selectedObject.set('top', canvas.height / 2)
-            selectedObject.setCoords()
-        }
-        canvas.renderAll()
-        saveToHistory()
-    }
-
-    const alignToEdge = (edge) => {
-        if (!selectedObject || selectedObject === overlayRef.current) return
-        const canvas = fabricRef.current
-        const objBounds = selectedObject.getBoundingRect()
-        
-        switch(edge) {
-            case 'left':
-                selectedObject.set('left', selectedObject.left - objBounds.left + 20)
-                break
-            case 'right':
-                selectedObject.set('left', selectedObject.left + (canvas.width - objBounds.left - objBounds.width - 20))
-                break
-            case 'top':
-                selectedObject.set('top', selectedObject.top - objBounds.top + 20)
-                break
-            case 'bottom':
-                selectedObject.set('top', selectedObject.top + (canvas.height - objBounds.top - objBounds.height - 20))
-                break
-        }
-        selectedObject.setCoords()
-        canvas.renderAll()
-        saveToHistory()
-    }
-
     // ============== 形状工具功能 ==============
     const addShape = (type) => {
         const canvas = fabricRef.current
@@ -1574,16 +1509,6 @@ export default function App() {
                         <Sliders size={12} className="inline mr-1" /> 调色
                     </button>
                     <button
-                        onClick={() => setActivePanel('align')}
-                        className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
-                            activePanel === 'align' 
-                                ? 'text-accent border-b-2 border-accent bg-accent/10' 
-                                : 'text-gray-400 hover:text-white'
-                        }`}
-                    >
-                        <Magnet size={12} className="inline mr-1" /> 对齐
-                    </button>
-                    <button
                         onClick={() => setActivePanel('text')}
                         className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
                             activePanel === 'text' 
@@ -2199,118 +2124,6 @@ export default function App() {
                                 请先选择一个图片图层
                             </div>
                         )}
-                    </div>
-                )}
-
-                {/* 智能对齐面板 */}
-                {activePanel === 'align' && (
-                    <div className="p-5 border-b border-border panel-section">
-                        <div className="flex items-center gap-2 text-gray-400 mb-3">
-                            <Magnet size={16} />
-                            <span className="text-sm font-medium uppercase tracking-wide">智能对齐</span>
-                        </div>
-
-                        {/* 对齐开关 */}
-                        <div className="flex items-center justify-between mb-4 p-3 bg-panel-light rounded-lg">
-                            <span className="text-sm text-gray-300">启用吸附</span>
-                            <button
-                                onClick={() => setSnapEnabled(!snapEnabled)}
-                                className={`w-12 h-6 rounded-full transition-colors ${
-                                    snapEnabled ? 'bg-accent' : 'bg-gray-600'
-                                }`}
-                            >
-                                <div className={`w-5 h-5 bg-white rounded-full transition-transform ${
-                                    snapEnabled ? 'translate-x-6' : 'translate-x-0.5'
-                                }`} />
-                            </button>
-                        </div>
-
-                        {/* 透视变形 */}
-                        <div className="mb-4">
-                            <label className="text-xs text-gray-500 mb-2 block">透视变形</label>
-                            {!isPerspectiveMode ? (
-                                <button
-                                    onClick={enterPerspectiveMode}
-                                    disabled={!selectedObject || selectedObject?.type !== 'image'}
-                                    className="w-full py-2.5 px-4 bg-panel-light hover:bg-accent/20 text-gray-300
-                                               rounded-lg transition-colors flex items-center justify-center gap-2
-                                               disabled:opacity-40 disabled:cursor-not-allowed"
-                                >
-                                    <ArrowUpRight size={16} />
-                                    进入透视模式
-                                </button>
-                            ) : (
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={applyPerspective}
-                                        className="flex-1 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg transition-colors"
-                                    >
-                                        应用变形
-                                    </button>
-                                    <button
-                                        onClick={cancelPerspective}
-                                        className="flex-1 py-2 bg-panel-light hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
-                                    >
-                                        取消
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* 对齐按钮 */}
-                        <div className="space-y-2">
-                            <label className="text-xs text-gray-500 mb-2 block">快速对齐</label>
-                            <div className="grid grid-cols-2 gap-2">
-                                <button
-                                    onClick={() => alignToCenter('h')}
-                                    disabled={!selectedObject}
-                                    className="py-2.5 px-3 bg-panel-light hover:bg-blue-500/20 text-gray-300
-                                               rounded-lg transition-colors text-sm disabled:opacity-40"
-                                >
-                                    水平居中
-                                </button>
-                                <button
-                                    onClick={() => alignToCenter('v')}
-                                    disabled={!selectedObject}
-                                    className="py-2.5 px-3 bg-panel-light hover:bg-blue-500/20 text-gray-300
-                                               rounded-lg transition-colors text-sm disabled:opacity-40"
-                                >
-                                    垂直居中
-                                </button>
-                                <button
-                                    onClick={() => alignToEdge('left')}
-                                    disabled={!selectedObject}
-                                    className="py-2 px-3 bg-panel-light hover:bg-blue-500/20 text-gray-300
-                                               rounded-lg transition-colors text-xs disabled:opacity-40"
-                                >
-                                    靠左
-                                </button>
-                                <button
-                                    onClick={() => alignToEdge('right')}
-                                    disabled={!selectedObject}
-                                    className="py-2 px-3 bg-panel-light hover:bg-blue-500/20 text-gray-300
-                                               rounded-lg transition-colors text-xs disabled:opacity-40"
-                                >
-                                    靠右
-                                </button>
-                                <button
-                                    onClick={() => alignToEdge('top')}
-                                    disabled={!selectedObject}
-                                    className="py-2 px-3 bg-panel-light hover:bg-blue-500/20 text-gray-300
-                                               rounded-lg transition-colors text-xs disabled:opacity-40"
-                                >
-                                    靠上
-                                </button>
-                                <button
-                                    onClick={() => alignToEdge('bottom')}
-                                    disabled={!selectedObject}
-                                    className="py-2 px-3 bg-panel-light hover:bg-blue-500/20 text-gray-300
-                                               rounded-lg transition-colors text-xs disabled:opacity-40"
-                                >
-                                    靠下
-                                </button>
-                            </div>
-                        </div>
                     </div>
                 )}
 

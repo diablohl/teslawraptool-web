@@ -456,28 +456,485 @@ export function generateLightningPattern(options = {}) {
 }
 
 /**
+ * 赛车数字贴纸
+ */
+export function generateRacingNumber(options = {}) {
+  const {
+    width = 800,
+    height = 600,
+    number = '88',
+    bgColor = '#e31937',
+    textColor = '#ffffff',
+    strokeColor = '#000000',
+  } = options
+
+  const { canvas, ctx } = createCanvas(width, height)
+  
+  // 绘制圆形背景
+  const centerX = width / 2
+  const centerY = height / 2
+  const radius = Math.min(width, height) * 0.4
+  
+  ctx.fillStyle = bgColor
+  ctx.beginPath()
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2)
+  ctx.fill()
+  
+  // 描边
+  ctx.strokeStyle = strokeColor
+  ctx.lineWidth = 8
+  ctx.stroke()
+  
+  // 绘制数字
+  ctx.fillStyle = textColor
+  ctx.strokeStyle = strokeColor
+  ctx.lineWidth = 4
+  ctx.font = `bold ${radius * 1.2}px Arial Black`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.strokeText(number, centerX, centerY)
+  ctx.fillText(number, centerX, centerY)
+  
+  return canvas.toDataURL('image/png')
+}
+
+/**
+ * 火焰图案
+ */
+export function generateFlamePattern(options = {}) {
+  const {
+    width = 800,
+    height = 600,
+    flameColors = ['#ff3300', '#ff6600', '#ff9900', '#ffcc00'],
+  } = options
+
+  const { canvas, ctx } = createCanvas(width, height)
+  
+  // 绘制多层火焰
+  const flameCount = 8
+  const flameWidth = width / flameCount
+  
+  for (let i = 0; i < flameCount; i++) {
+    const x = i * flameWidth
+    const gradient = ctx.createLinearGradient(x, height, x + flameWidth, 0)
+    
+    flameColors.forEach((color, idx) => {
+      gradient.addColorStop(idx / (flameColors.length - 1), color)
+    })
+    
+    ctx.fillStyle = gradient
+    ctx.beginPath()
+    ctx.moveTo(x, height)
+    
+    // 火焰形状
+    const points = 5 + Math.floor(Math.random() * 3)
+    for (let j = 0; j <= points; j++) {
+      const px = x + (j / points) * flameWidth
+      const py = height * (0.3 + Math.random() * 0.4)
+      ctx.lineTo(px, py)
+    }
+    
+    ctx.lineTo(x + flameWidth, height)
+    ctx.closePath()
+    ctx.fill()
+  }
+  
+  return canvas.toDataURL('image/png')
+}
+
+/**
+ * 方格旗图案
+ */
+export function generateCheckeredFlag(options = {}) {
+  const {
+    width = 800,
+    height = 600,
+    squareSize = 40,
+  } = options
+
+  const { canvas, ctx } = createCanvas(width, height)
+  
+  const cols = Math.ceil(width / squareSize)
+  const rows = Math.ceil(height / squareSize)
+  
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const isBlack = (row + col) % 2 === 0
+      ctx.fillStyle = isBlack ? '#000000' : '#ffffff'
+      ctx.fillRect(col * squareSize, row * squareSize, squareSize, squareSize)
+    }
+  }
+  
+  return canvas.toDataURL('image/png')
+}
+
+/**
+ * 赛道条纹
+ */
+export function generateRaceTrackStripes(options = {}) {
+  const {
+    width = 800,
+    height = 600,
+    stripeColor = '#ffcc00',
+    dashLength = 60,
+    dashGap = 40,
+  } = options
+
+  const { canvas, ctx } = createCanvas(width, height)
+  
+  ctx.strokeStyle = stripeColor
+  ctx.lineWidth = 30
+  ctx.lineCap = 'butt'
+  
+  // 双虚线
+  const y1 = height * 0.35
+  const y2 = height * 0.65
+  
+  ctx.setLineDash([dashLength, dashGap])
+  
+  ctx.beginPath()
+  ctx.moveTo(0, y1)
+  ctx.lineTo(width, y1)
+  ctx.stroke()
+  
+  ctx.beginPath()
+  ctx.moveTo(0, y2)
+  ctx.lineTo(width, y2)
+  ctx.stroke()
+  
+  return canvas.toDataURL('image/png')
+}
+
+/**
+ * 侧面拉花条纹
+ */
+export function generateSideStripes(options = {}) {
+  const {
+    width = 800,
+    height = 600,
+    color1 = '#e31937',
+    color2 = '#ffffff',
+    stripeHeight = 80,
+  } = options
+
+  const { canvas, ctx } = createCanvas(width, height)
+  
+  const y = height / 2 - stripeHeight / 2
+  
+  // 主条纹
+  ctx.fillStyle = color1
+  ctx.fillRect(0, y, width, stripeHeight)
+  
+  // 上下边线
+  ctx.fillStyle = color2
+  ctx.fillRect(0, y - 5, width, 5)
+  ctx.fillRect(0, y + stripeHeight, width, 5)
+  
+  // 渐变尖角（箭头效果）
+  const gradient = ctx.createLinearGradient(width * 0.7, 0, width, 0)
+  gradient.addColorStop(0, color1)
+  gradient.addColorStop(1, 'transparent')
+  
+  ctx.fillStyle = gradient
+  ctx.beginPath()
+  ctx.moveTo(width * 0.7, y)
+  ctx.lineTo(width, height / 2)
+  ctx.lineTo(width * 0.7, y + stripeHeight)
+  ctx.closePath()
+  ctx.fill()
+  
+  return canvas.toDataURL('image/png')
+}
+
+/**
+ * 赛车号码板
+ */
+export function generateNumberPlate(options = {}) {
+  const {
+    width = 800,
+    height = 600,
+    number = '1',
+    bgColor = '#ffffff',
+    numberColor = '#000000',
+    borderColor = '#e31937',
+  } = options
+
+  const { canvas, ctx } = createCanvas(width, height)
+  
+  // 圆角矩形背景
+  const plateWidth = width * 0.6
+  const plateHeight = height * 0.5
+  const x = (width - plateWidth) / 2
+  const y = (height - plateHeight) / 2
+  const radius = 20
+  
+  // 背景
+  ctx.fillStyle = bgColor
+  ctx.beginPath()
+  ctx.roundRect(x, y, plateWidth, plateHeight, radius)
+  ctx.fill()
+  
+  // 边框
+  ctx.strokeStyle = borderColor
+  ctx.lineWidth = 10
+  ctx.stroke()
+  
+  // 号码
+  ctx.fillStyle = numberColor
+  ctx.font = `bold ${plateHeight * 0.7}px Arial Black`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(number, width / 2, height / 2)
+  
+  return canvas.toDataURL('image/png')
+}
+
+/**
+ * 速度线条
+ */
+export function generateSpeedLines(options = {}) {
+  const {
+    width = 800,
+    height = 600,
+    lineColor = '#e31937',
+    lineCount = 15,
+  } = options
+
+  const { canvas, ctx } = createCanvas(width, height)
+  
+  ctx.strokeStyle = lineColor
+  ctx.lineCap = 'round'
+  
+  const spacing = height / (lineCount + 1)
+  
+  for (let i = 1; i <= lineCount; i++) {
+    const y = spacing * i
+    const startX = Math.random() * width * 0.3
+    const endX = width * (0.5 + Math.random() * 0.5)
+    const thickness = 2 + Math.random() * 6
+    
+    ctx.lineWidth = thickness
+    ctx.beginPath()
+    ctx.moveTo(startX, y)
+    ctx.lineTo(endX, y)
+    ctx.stroke()
+  }
+  
+  return canvas.toDataURL('image/png')
+}
+
+/**
+ * 星空图案
+ */
+export function generateStarField(options = {}) {
+  const {
+    width = 800,
+    height = 600,
+    starCount = 100,
+    starColors = ['#ffffff', '#ffff00', '#ff0000'],
+  } = options
+
+  const { canvas, ctx } = createCanvas(width, height)
+  
+  for (let i = 0; i < starCount; i++) {
+    const x = Math.random() * width
+    const y = Math.random() * height
+    const size = 1 + Math.random() * 4
+    const color = starColors[Math.floor(Math.random() * starColors.length)]
+    
+    ctx.fillStyle = color
+    ctx.beginPath()
+    ctx.arc(x, y, size, 0, Math.PI * 2)
+    ctx.fill()
+    
+    // 添加星芒
+    if (size > 2) {
+      ctx.strokeStyle = color
+      ctx.lineWidth = 1
+      const rays = 4
+      for (let j = 0; j < rays; j++) {
+        const angle = (j / rays) * Math.PI * 2
+        ctx.beginPath()
+        ctx.moveTo(x, y)
+        ctx.lineTo(x + Math.cos(angle) * size * 2, y + Math.sin(angle) * size * 2)
+        ctx.stroke()
+      }
+    }
+  }
+  
+  return canvas.toDataURL('image/png')
+}
+
+/**
  * 所有预设图案
  */
 export const PRESET_PATTERNS = [
   {
     id: 'racing-stripes-red',
     name: '赛车条纹 - 红色',
-    category: 'stripes',
+    category: 'racing',
     generate: () => generateRacingStripes({ stripeColor: '#e31937' }),
     thumbnail: null,
   },
   {
     id: 'racing-stripes-black',
     name: '赛车条纹 - 黑色',
-    category: 'stripes',
+    category: 'racing',
     generate: () => generateRacingStripes({ stripeColor: '#1a1a1a', stripeWidth: 50, gap: 30 }),
     thumbnail: null,
   },
   {
     id: 'racing-stripes-gold',
     name: '赛车条纹 - 金色',
-    category: 'stripes',
+    category: 'racing',
     generate: () => generateRacingStripes({ stripeColor: '#f4d03f', stripeWidth: 35, gap: 15 }),
+    thumbnail: null,
+  },
+  {
+    id: 'racing-stripes-blue',
+    name: '赛车条纹 - 蓝色',
+    category: 'racing',
+    generate: () => generateRacingStripes({ stripeColor: '#0984e3', stripeWidth: 45, gap: 25 }),
+    thumbnail: null,
+  },
+  {
+    id: 'racing-stripes-white',
+    name: '赛车条纹 - 白色',
+    category: 'racing',
+    generate: () => generateRacingStripes({ stripeColor: '#ffffff', stripeWidth: 40, gap: 20 }),
+    thumbnail: null,
+  },
+  {
+    id: 'side-stripes-red',
+    name: '侧面拉花 - 红白',
+    category: 'racing',
+    generate: () => generateSideStripes({ color1: '#e31937', color2: '#ffffff' }),
+    thumbnail: null,
+  },
+  {
+    id: 'side-stripes-blue',
+    name: '侧面拉花 - 蓝白',
+    category: 'racing',
+    generate: () => generateSideStripes({ color1: '#0984e3', color2: '#ffffff' }),
+    thumbnail: null,
+  },
+  {
+    id: 'side-stripes-gold',
+    name: '侧面拉花 - 金黑',
+    category: 'racing',
+    generate: () => generateSideStripes({ color1: '#f4d03f', color2: '#000000', stripeHeight: 100 }),
+    thumbnail: null,
+  },
+  {
+    id: 'flame-red',
+    name: '火焰图案 - 红橙',
+    category: 'racing',
+    generate: () => generateFlamePattern({ flameColors: ['#ff0000', '#ff4400', '#ff8800', '#ffcc00'] }),
+    thumbnail: null,
+  },
+  {
+    id: 'flame-blue',
+    name: '火焰图案 - 蓝紫',
+    category: 'racing',
+    generate: () => generateFlamePattern({ flameColors: ['#0066ff', '#3399ff', '#66ccff', '#99ffff'] }),
+    thumbnail: null,
+  },
+  {
+    id: 'checkered-flag',
+    name: '方格旗',
+    category: 'racing',
+    generate: () => generateCheckeredFlag({ squareSize: 50 }),
+    thumbnail: null,
+  },
+  {
+    id: 'checkered-flag-small',
+    name: '方格旗 - 小格',
+    category: 'racing',
+    generate: () => generateCheckeredFlag({ squareSize: 30 }),
+    thumbnail: null,
+  },
+  {
+    id: 'race-track-yellow',
+    name: '赛道条纹 - 黄色',
+    category: 'racing',
+    generate: () => generateRaceTrackStripes({ stripeColor: '#ffcc00' }),
+    thumbnail: null,
+  },
+  {
+    id: 'race-track-white',
+    name: '赛道条纹 - 白色',
+    category: 'racing',
+    generate: () => generateRaceTrackStripes({ stripeColor: '#ffffff', dashLength: 80, dashGap: 50 }),
+    thumbnail: null,
+  },
+  {
+    id: 'racing-number-red',
+    name: '赛车号码 - 红底',
+    category: 'racing',
+    generate: () => generateRacingNumber({ number: '88', bgColor: '#e31937' }),
+    thumbnail: null,
+  },
+  {
+    id: 'racing-number-black',
+    name: '赛车号码 - 黑底',
+    category: 'racing',
+    generate: () => generateRacingNumber({ number: '1', bgColor: '#000000' }),
+    thumbnail: null,
+  },
+  {
+    id: 'racing-number-gold',
+    name: '赛车号码 - 金底',
+    category: 'racing',
+    generate: () => generateRacingNumber({ number: '77', bgColor: '#f4d03f', textColor: '#000000' }),
+    thumbnail: null,
+  },
+  {
+    id: 'number-plate-white',
+    name: '号码板 - 白底',
+    category: 'racing',
+    generate: () => generateNumberPlate({ number: '1', bgColor: '#ffffff', borderColor: '#e31937' }),
+    thumbnail: null,
+  },
+  {
+    id: 'number-plate-black',
+    name: '号码板 - 黑底',
+    category: 'racing',
+    generate: () => generateNumberPlate({ number: '99', bgColor: '#000000', numberColor: '#ffffff', borderColor: '#f4d03f' }),
+    thumbnail: null,
+  },
+  {
+    id: 'speed-lines-red',
+    name: '速度线条 - 红色',
+    category: 'racing',
+    generate: () => generateSpeedLines({ lineColor: '#e31937', lineCount: 12 }),
+    thumbnail: null,
+  },
+  {
+    id: 'speed-lines-blue',
+    name: '速度线条 - 蓝色',
+    category: 'racing',
+    generate: () => generateSpeedLines({ lineColor: '#0984e3', lineCount: 15 }),
+    thumbnail: null,
+  },
+  {
+    id: 'speed-lines-white',
+    name: '速度线条 - 白色',
+    category: 'racing',
+    generate: () => generateSpeedLines({ lineColor: '#ffffff', lineCount: 18 }),
+    thumbnail: null,
+  },
+  {
+    id: 'star-field-classic',
+    name: '星空 - 经典',
+    category: 'racing',
+    generate: () => generateStarField({ starCount: 80 }),
+    thumbnail: null,
+  },
+  {
+    id: 'star-field-colorful',
+    name: '星空 - 彩色',
+    category: 'racing',
+    generate: () => generateStarField({ starCount: 100, starColors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00'] }),
     thumbnail: null,
   },
   {
@@ -492,6 +949,27 @@ export const PRESET_PATTERNS = [
     name: '斜条纹 - 白灰',
     category: 'stripes',
     generate: () => generateDiagonalStripes({ stripeColor: '#ffffff', bgColor: '#4a4a4a', stripeWidth: 15, gap: 30 }),
+    thumbnail: null,
+  },
+  {
+    id: 'diagonal-blue',
+    name: '斜条纹 - 蓝白',
+    category: 'stripes',
+    generate: () => generateDiagonalStripes({ stripeColor: '#0984e3', bgColor: '#ffffff', stripeWidth: 25, gap: 35 }),
+    thumbnail: null,
+  },
+  {
+    id: 'lightning-red',
+    name: '闪电条纹 - 红色',
+    category: 'stripes',
+    generate: () => generateLightningPattern({ color: '#e31937' }),
+    thumbnail: null,
+  },
+  {
+    id: 'lightning-gold',
+    name: '闪电条纹 - 金色',
+    category: 'stripes',
+    generate: () => generateLightningPattern({ color: '#f4d03f', bgColor: '#2d3436' }),
     thumbnail: null,
   },
   {
@@ -664,6 +1142,13 @@ export const PRESET_PATTERNS = [
     generate: () => generateCamouflage({ colors: ['#d4a574', '#c4956a', '#b8860b', '#8b7355'] }),
     thumbnail: null,
   },
+  {
+    id: 'camo-arctic',
+    name: '迷彩 - 雪地',
+    category: 'camo',
+    generate: () => generateCamouflage({ colors: ['#ffffff', '#e0e0e0', '#c0c0c0', '#a0a0a0'], blobCount: 60 }),
+    thumbnail: null,
+  },
 ]
 
 /**
@@ -682,6 +1167,7 @@ export function getPatternsByCategory(category) {
 export function getCategories() {
   return [
     { id: 'all', name: '全部' },
+    { id: 'racing', name: '赛车' },
     { id: 'stripes', name: '条纹' },
     { id: 'gradient', name: '渐变' },
     { id: 'geometric', name: '几何' },
