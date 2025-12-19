@@ -431,7 +431,26 @@ export default function App() {
             const thumbnails = {}
             for (const pattern of PRESET_PATTERNS) {
                 try {
-                    thumbnails[pattern.id] = pattern.generate()
+                    // 生成小尺寸缩略图预览 (400x225 = 16:9)
+                    const tempCanvas = document.createElement('canvas')
+                    tempCanvas.width = 400
+                    tempCanvas.height = 225
+                    const tempCtx = tempCanvas.getContext('2d')
+                    
+                    // 生成完整图案
+                    const fullPattern = pattern.generate()
+                    
+                    // 加载并缩小到缩略图尺寸
+                    const img = new Image()
+                    await new Promise((resolve, reject) => {
+                        img.onload = resolve
+                        img.onerror = reject
+                        img.src = fullPattern
+                    })
+                    
+                    // 绘制到缩略图画布
+                    tempCtx.drawImage(img, 0, 0, 400, 225)
+                    thumbnails[pattern.id] = tempCanvas.toDataURL('image/png')
                 } catch (error) {
                     console.error(`生成缩略图失败: ${pattern.id}`, error)
                 }
@@ -1725,45 +1744,58 @@ export default function App() {
                         </div>
                         
                         {/* 分类选择 */}
-                        <div className="flex flex-wrap gap-1 mb-4">
-                            {getCategories().map(cat => (
-                                <button
-                                    key={cat.id}
-                                    onClick={() => setPatternCategory(cat.id)}
-                                    className={`px-2 py-1 text-xs rounded-lg transition-colors ${
-                                        patternCategory === cat.id
-                                            ? 'bg-accent text-white'
-                                            : 'bg-panel-light text-gray-400 hover:text-white'
-                                    }`}
-                                >
-                                    {cat.name}
-                                </button>
-                            ))}
+                        <div className="mb-4">
+                            <label className="text-xs text-gray-500 mb-2 block">图案分类</label>
+                            <div className="flex flex-wrap gap-2">
+                                {getCategories().map(cat => (
+                                    <button
+                                        key={cat.id}
+                                        onClick={() => setPatternCategory(cat.id)}
+                                        className={`px-3 py-1.5 text-xs rounded-lg transition-colors font-medium ${
+                                            patternCategory === cat.id
+                                                ? 'bg-accent text-white shadow-lg shadow-accent/30'
+                                                : 'bg-panel-light text-gray-400 hover:text-white hover:bg-panel-light/80'
+                                        }`}
+                                    >
+                                        {cat.name}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                         
                         {/* 图案网格 */}
-                        <div className="grid grid-cols-2 gap-2 max-h-[400px] overflow-y-auto pr-1">
+                        <div className="grid grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-1">
                             {getPatternsByCategory(patternCategory).map(pattern => (
-                                <button
-                                    key={pattern.id}
-                                    onClick={() => handleAddPattern(pattern)}
-                                    className="group relative aspect-video rounded-lg overflow-hidden 
-                                               border border-border hover:border-accent transition-colors"
-                                >
-                                    {patternThumbnails[pattern.id] && (
-                                        <img 
-                                            src={patternThumbnails[pattern.id]} 
-                                            alt={pattern.name}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    )}
-                                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 
-                                                    transition-opacity flex items-center justify-center">
-                                        <span className="text-white text-xs text-center px-2">
-                                            {pattern.name}
-                                        </span>
-                                    </div>
-                                </button>
+                                <div key={pattern.id} className="w-full" style={{ paddingBottom: '56.25%', position: 'relative' }}>
+                                    <button
+                                        onClick={() => handleAddPattern(pattern)}
+                                        className="group absolute inset-0 w-full h-full rounded-lg overflow-hidden 
+                                                   border-2 border-border hover:border-accent transition-colors
+                                                   bg-panel-light"
+                                    >
+                                        {patternThumbnails[pattern.id] ? (
+                                            <img 
+                                                src={patternThumbnails[pattern.id]} 
+                                                alt={pattern.name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-gray-500">
+                                                <div className="text-center">
+                                                    <Palette size={24} className="mx-auto mb-2 opacity-50" />
+                                                    <div className="text-xs">加载中...</div>
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent 
+                                                        opacity-0 group-hover:opacity-100 transition-opacity 
+                                                        flex items-end justify-center pb-2">
+                                            <span className="text-white text-xs font-medium text-center px-2">
+                                                {pattern.name}
+                                            </span>
+                                        </div>
+                                    </button>
+                                </div>
                             ))}
                         </div>
                     </div>
