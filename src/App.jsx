@@ -8,7 +8,7 @@ import {
     Palette, Grid3X3, Lock, Unlock, Move, Copy, Scissors,
     SunMedium, Droplets, Contrast, Square, Circle, Triangle, 
     Pentagon, Hexagon, Star, Pencil, Eraser, MousePointer,
-    FolderOpen, Layout, PaintBucket,
+    FolderOpen, Layout, PaintBucket, Mail,
     Sliders, ArrowUpRight
 } from 'lucide-react'
 import { processTemplateMask } from './utils/maskProcessor'
@@ -1669,10 +1669,25 @@ export default function App() {
             <div className="w-80 bg-panel border-l border-border overflow-y-auto">
                 {/* 标题 */}
                 <div className="p-6 border-b border-border bg-gradient-to-r from-panel to-transparent">
-                    <h1 className="font-display text-2xl font-bold tracking-wider text-white">
-                        WRAP<span className="text-accent">STUDIO</span>
-                    </h1>
-                    <p className="text-gray-500 text-sm mt-1">Tesla 车身设计工具</p>
+                    <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                            <h1 className="font-display text-2xl font-bold tracking-wider text-white">
+                                WRAP<span className="text-accent">STUDIO</span>
+                            </h1>
+                            <p className="text-gray-500 text-sm mt-1">Tesla 车身设计工具</p>
+                        </div>
+                    </div>
+                    
+                    {/* 联系反馈按钮 */}
+                    <a
+                        href="mailto:hldiablo@hotmail.com?subject=WrapStudio反馈&body=您好，我想分享我的作品或反馈意见：%0D%0A%0D%0A"
+                        className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-lg 
+                                   bg-accent/10 hover:bg-accent/20 border border-accent/30 hover:border-accent/50
+                                   text-gray-300 hover:text-white transition-all duration-200 group"
+                    >
+                        <Mail size={16} className="group-hover:scale-110 transition-transform" />
+                        <span className="text-sm font-medium">联系反馈 / 分享作品</span>
+                    </a>
                 </div>
 
                 {/* 车型选择 */}
