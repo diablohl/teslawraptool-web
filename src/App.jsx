@@ -1680,13 +1680,15 @@ export default function App() {
                     
                     {/* 联系反馈按钮 */}
                     <a
-                        href="mailto:hldiablo@hotmail.com?subject=WrapStudio反馈&body=您好，我想分享我的作品或反馈意见：%0D%0A%0D%0A"
+                        href="https://tally.so/r/D4KVxR"
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-lg 
                                    bg-accent/10 hover:bg-accent/20 border border-accent/30 hover:border-accent/50
                                    text-gray-300 hover:text-white transition-all duration-200 group"
                     >
                         <Mail size={16} className="group-hover:scale-110 transition-transform" />
-                        <span className="text-sm font-medium">联系反馈 / 分享作品</span>
+                        <span className="text-sm font-medium">反馈意见 / 分享作品</span>
                     </a>
                 </div>
 
