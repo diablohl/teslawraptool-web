@@ -8,7 +8,7 @@ import {
     Palette, Grid3X3, Lock, Unlock, Move, Copy, Scissors,
     SunMedium, Droplets, Contrast, Square, Circle, Triangle, 
     Pentagon, Hexagon, Star, Pencil, Eraser, MousePointer,
-    FolderOpen, Layout,
+    FolderOpen, Layout, PaintBucket,
     Sliders, ArrowUpRight
 } from 'lucide-react'
 import { processTemplateMask } from './utils/maskProcessor'
@@ -103,6 +103,11 @@ export default function App() {
     const [brushColor, setBrushColor] = useState('#e31937')
     const [brushWidth, setBrushWidth] = useState(5)
 
+    // 填充工具状态
+    const [isFillMode, setIsFillMode] = useState(false)
+    const [fillColor, setFillColor] = useState('#e31937')
+    const [fillTolerance, setFillTolerance] = useState(30)
+
     // 透视变形状态
     const [isPerspectiveMode, setIsPerspectiveMode] = useState(false)
     const perspectivePointsRef = useRef([])
@@ -111,7 +116,7 @@ export default function App() {
     const carTemplates = getTemplatesByCarModel(selectedModel)
 
     // 当前绘图工具 
-    const [currentTool, setCurrentTool] = useState('select') // select, shape, brush, perspective
+    const [currentTool, setCurrentTool] = useState('select') // select, shape, brush, fill, perspective
 
     // 保存画布状态到历史记录
     const saveToHistory = useCallback(() => {
@@ -459,6 +464,24 @@ export default function App() {
         }
         generateThumbnails()
     }, [])
+
+    // 填充模式事件监听
+    useEffect(() => {
+        const canvas = fabricRef.current
+        if (!canvas) return
+
+        const handleMouseDown = (e) => {
+            if (isFillMode) {
+                handleFillClick(e)
+            }
+        }
+
+        canvas.on('mouse:down', handleMouseDown)
+
+        return () => {
+            canvas.off('mouse:down', handleMouseDown)
+        }
+    }, [isFillMode, fillColor, fillTolerance])
 
     // 导入贴图
     const handleImportTexture = () => {
@@ -1040,6 +1063,205 @@ export default function App() {
         return result
     }
 
+    // ============== 填充工具功能 ==============
+    const enableFillMode = () => {
+        const canvas = fabricRef.current
+        if (!canvas) return
+
+        // 禁用其他模式
+        canvas.isDrawingMode = false
+        setIsDrawingMode(false)
+        setIsPerspectiveMode(false)
+        
+        // 设置填充模式
+        setIsFillMode(true)
+        setCurrentTool('fill')
+        
+        // 取消所有对象的选择
+        canvas.discardActiveObject()
+        
+        // 禁用对象选择
+        canvas.selection = false
+        canvas.getObjects().forEach(obj => {
+            obj.selectable = false
+            obj.evented = false
+        })
+        
+        canvas.renderAll()
+        
+        // 改变鼠标样式
+        canvas.defaultCursor = 'crosshair'
+        canvas.hoverCursor = 'crosshair'
+    }
+
+    const disableFillMode = () => {
+        const canvas = fabricRef.current
+        if (!canvas) return
+        
+        setIsFillMode(false)
+        setCurrentTool('select')
+        
+        // 恢复对象选择
+        canvas.selection = true
+        canvas.getObjects().forEach(obj => {
+            if (obj !== overlayRef.current) {
+                obj.selectable = true
+                obj.evented = true
+            }
+        })
+        
+        canvas.defaultCursor = 'default'
+        canvas.hoverCursor = 'move'
+        canvas.renderAll()
+    }
+
+    // 泛洪填充算法
+    const floodFill = (imageData, x, y, fillColorRgb, tolerance) => {
+        const { width, height, data } = imageData
+        const targetColor = getPixelColor(data, x, y, width)
+        
+        // 如果目标颜色和填充颜色相同，不需要填充
+        if (colorsMatch(targetColor, fillColorRgb, 0)) {
+            return imageData
+        }
+        
+        const stack = [[x, y]]
+        const visited = new Set()
+        
+        while (stack.length > 0) {
+            const [cx, cy] = stack.pop()
+            const key = `${cx},${cy}`
+            
+            if (visited.has(key)) continue
+            if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue
+            
+            visited.add(key)
+            
+            const currentColor = getPixelColor(data, cx, cy, width)
+            
+            if (!colorsMatch(currentColor, targetColor, tolerance)) continue
+            
+            // 填充当前像素
+            setPixelColor(data, cx, cy, width, fillColorRgb)
+            
+            // 添加相邻像素到栈
+            stack.push([cx + 1, cy])
+            stack.push([cx - 1, cy])
+            stack.push([cx, cy + 1])
+            stack.push([cx, cy - 1])
+        }
+        
+        return imageData
+    }
+
+    // 获取像素颜色
+    const getPixelColor = (data, x, y, width) => {
+        const index = (y * width + x) * 4
+        return {
+            r: data[index],
+            g: data[index + 1],
+            b: data[index + 2],
+            a: data[index + 3]
+        }
+    }
+
+    // 设置像素颜色
+    const setPixelColor = (data, x, y, width, color) => {
+        const index = (y * width + x) * 4
+        data[index] = color.r
+        data[index + 1] = color.g
+        data[index + 2] = color.b
+        data[index + 3] = 255 // 完全不透明
+    }
+
+    // 判断颜色是否匹配
+    const colorsMatch = (color1, color2, tolerance) => {
+        return Math.abs(color1.r - color2.r) <= tolerance &&
+               Math.abs(color1.g - color2.g) <= tolerance &&
+               Math.abs(color1.b - color2.b) <= tolerance
+    }
+
+    // 处理填充点击
+    const handleFillClick = (e) => {
+        if (!isFillMode) return
+        
+        const canvas = fabricRef.current
+        if (!canvas) return
+
+        console.log('填充工具点击')
+
+        // 获取点击位置
+        const pointer = canvas.getPointer(e.e)
+        const x = Math.floor(pointer.x)
+        const y = Math.floor(pointer.y)
+
+        console.log('点击位置:', x, y)
+
+        // 创建临时画布，获取当前画布的像素数据
+        const tempCanvas = document.createElement('canvas')
+        tempCanvas.width = canvas.width
+        tempCanvas.height = canvas.height
+        const tempCtx = tempCanvas.getContext('2d')
+
+        // 使用 toDataURL 将整个画布导出为图像
+        const canvasDataURL = canvas.toDataURL()
+        const img = new Image()
+        
+        img.onload = () => {
+            // 绘制到临时画布
+            tempCtx.drawImage(img, 0, 0)
+            
+            // 获取图像数据
+            const imageData = tempCtx.getImageData(0, 0, canvas.width, canvas.height)
+
+            // 将填充颜色转换为RGB
+            const fillColorRgb = hexToRgb(fillColor)
+
+            console.log('开始填充，颜色:', fillColorRgb, '容差:', fillTolerance)
+
+            // 执行泛洪填充
+            const filledImageData = floodFill(imageData, x, y, fillColorRgb, fillTolerance)
+
+            // 将填充结果绘制回临时画布
+            tempCtx.putImageData(filledImageData, 0, 0)
+
+            // 创建新的图像对象添加到画布
+            fabric.Image.fromURL(tempCanvas.toDataURL(), (fillImg) => {
+                fillImg.set({
+                    left: 0,
+                    top: 0,
+                    selectable: true,
+                    evented: true,
+                    name: 'fill-layer'
+                })
+                
+                canvas.add(fillImg)
+                
+                // 确保overlay在最上层
+                if (overlayRef.current) {
+                    canvas.bringToFront(overlayRef.current)
+                }
+                
+                canvas.renderAll()
+                saveToHistory()
+                
+                console.log('填充完成')
+            })
+        }
+        
+        img.src = canvasDataURL
+    }
+
+    // 十六进制颜色转RGB
+    const hexToRgb = (hex) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : { r: 227, g: 25, b: 55 } // 默认红色
+    }
+
     // ============== 画笔工具功能 ==============
     const toggleDrawingMode = (enabled) => {
         const canvas = fabricRef.current
@@ -1503,6 +1725,16 @@ export default function App() {
                         }`}
                     >
                         <Square size={12} className="inline mr-1" /> 形状
+                    </button>
+                    <button
+                        onClick={() => setActivePanel('fill')}
+                        className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
+                            activePanel === 'fill' 
+                                ? 'text-accent border-b-2 border-accent bg-accent/10' 
+                                : 'text-gray-400 hover:text-white'
+                        }`}
+                    >
+                        <PaintBucket size={12} className="inline mr-1" /> 填充
                     </button>
                     <button
                         onClick={() => setActivePanel('brush')}
@@ -2063,6 +2295,111 @@ export default function App() {
                                         height: brushWidth,
                                         backgroundColor: brushColor,
                                     }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* 填充工具面板 */}
+                {activePanel === 'fill' && (
+                    <div className="p-5 border-b border-border panel-section">
+                        <div className="flex items-center gap-2 text-gray-400 mb-3">
+                            <PaintBucket size={16} />
+                            <span className="text-sm font-medium uppercase tracking-wide">填充工具</span>
+                        </div>
+
+                        <button
+                            onClick={() => isFillMode ? disableFillMode() : enableFillMode()}
+                            className={`w-full py-3 px-4 rounded-lg font-semibold transition-all duration-200 
+                                       flex items-center justify-center gap-2 ${
+                                isFillMode
+                                    ? 'bg-accent text-white'
+                                    : 'bg-panel-light text-gray-300 hover:bg-accent/20'
+                            }`}
+                        >
+                            {isFillMode ? (
+                                <>
+                                    <MousePointer size={18} />
+                                    退出填充模式
+                                </>
+                            ) : (
+                                <>
+                                    <PaintBucket size={18} />
+                                    启用填充工具
+                                </>
+                            )}
+                        </button>
+
+                        {/* 使用提示 */}
+                        <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                            <div className="flex items-start gap-2">
+                                <Eye size={16} className="text-blue-400 mt-0.5 flex-shrink-0" />
+                                <div className="text-xs text-blue-300">
+                                    <p className="font-medium mb-1">使用说明：</p>
+                                    <p>1. 点击"启用填充工具"按钮</p>
+                                    <p>2. 在画布上点击需要填充的区域</p>
+                                    <p>3. 线条围起来的区域会被填充颜色</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-4 space-y-3">
+                            <div>
+                                <label className="text-xs text-gray-500 mb-1.5 block">填充颜色</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="color"
+                                        value={fillColor}
+                                        onChange={(e) => setFillColor(e.target.value)}
+                                        className="w-12 h-10 rounded cursor-pointer border border-border"
+                                    />
+                                    <input
+                                        type="text"
+                                        value={fillColor}
+                                        onChange={(e) => setFillColor(e.target.value)}
+                                        className="flex-1 bg-panel-light border border-border rounded px-3 text-white text-sm"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* 快捷颜色 */}
+                            <div className="flex gap-1 flex-wrap">
+                                {['#e31937', '#ff6b00', '#ffd700', '#00ff00', '#00bfff', '#8b5cf6', '#ffffff', '#000000'].map(color => (
+                                    <button
+                                        key={color}
+                                        onClick={() => setFillColor(color)}
+                                        className={`w-8 h-8 rounded-lg border-2 transition-transform hover:scale-110 ${
+                                            fillColor === color ? 'border-white' : 'border-transparent'
+                                        }`}
+                                        style={{ backgroundColor: color }}
+                                    />
+                                ))}
+                            </div>
+
+                            <div>
+                                <div className="flex justify-between text-xs mb-1.5">
+                                    <span className="text-gray-500">颜色容差</span>
+                                    <span className="text-gray-400 font-mono">{fillTolerance}</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value={fillTolerance}
+                                    onChange={(e) => setFillTolerance(Number(e.target.value))}
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    容差越大，填充范围越大
+                                </p>
+                            </div>
+
+                            {/* 颜色预览 */}
+                            <div>
+                                <label className="text-xs text-gray-500 mb-1.5 block">颜色预览</label>
+                                <div 
+                                    className="w-full h-16 rounded-lg border border-border"
+                                    style={{ backgroundColor: fillColor }}
                                 />
                             </div>
                         </div>
